@@ -183,6 +183,31 @@
   re-locks or widens the contract; it **quotes** the locked surface (`POST /inquiries`, `Inquiry`,
   `InquiryStatus` for S01) and routes any gap back to the architecture gate.
 
+## Phase 3 decisions (build-half Step B)
+
+> Recorded 2026-06-06 while building Step B (`sdlc-implement`) — the `dev` step — and proving it on
+> one atomic task (`T01`) of `EP-istifta-inquiries-S01` in the separate `demo-repos/backend` repo.
+> Per `docs/phase-3-build-plan.md` §B: one atomic task = one branch = one PR/MR.
+
+- **Implementing lens = `dev`** (`bmad-agent-dev`, Amelia). The dev implements ONE atomic task from the
+  story's `tasks.md` as a small diff (≤3 files), inside the files the task declared.
+- **Branch convention** (`config.yaml` `build.branch_convention`):
+  `feat/<story-id>-<task-id>-<short-slug>`, e.g.
+  `feat/EP-istifta-inquiries-S01-T01-create-inquiry`, branched off the code repo's default branch.
+- **Commit convention** — conventional subject + body + a **final trailer that is the task ID**
+  (`Task: <story-id>-<task-id>`). This trailer is the anchor the Step C spec-link check will read to
+  tie a diff to its spec/story. `Contract-Change: yes` is added **only** when the diff alters the
+  locked contract surface — that routes back to the architecture gate (Step 5 of the skill). Normal
+  implementation **consumes** the contract and carries no such trailer.
+- **File-boundary rule (hard stop).** Each `tasks.md` task declares a `Files:` list; the diff must stay
+  inside it. A needed file outside the list is treated as a **spec bug** (re-scope the task), never a
+  silent diff widening — this is the main guard against unreviewed scope slipping past the gates.
+- **Verified on T01.** Implemented `POST /inquiries` create path across exactly the three declared
+  files (`src/inquiry/index.js`, `src/inquiry/store.js`, `src/routes.js`); an ephemeral `node` smoke
+  confirmed AC #1 (`{ id, status: "submitted" }`) and that an injected `status` is ignored
+  (server-owned). Committed on the task branch with the `Task:` trailer and no `Contract-Change`.
+  The skill **stops at the committed branch** — no PR/merge/state change (gates are Step C, not built).
+
 ## License note (for any future commercial intent)
 
 - BMAD-METHOD: **MIT**. Impeccable: **Apache-2.0** (derived from Anthropic frontend-design skill).
