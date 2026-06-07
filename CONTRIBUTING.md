@@ -4,7 +4,8 @@ Conventions for commits, branches, PR/MR titles, and the stable IDs that tie an 
 tasks, and shipped code. These are what the gates and checks rely on — a diff that follows them is
 traceable back to its task, story, and contract; one that doesn't will fail a gate.
 
-New to the workflow? Start with **`TEAM-GUIDE.md`**; the full reference is **`README.md`**.
+New to the workflow? Start with [`TEAM-GUIDE.md`](TEAM-GUIDE.md); the full reference is
+[`README.md`](README.md).
 
 ---
 
@@ -21,14 +22,48 @@ PR, build log) is keyed on them, so renaming one breaks the chain.
 
 ---
 
-## Commit messages
+## Commit & PR/MR title convention
 
-Follow [Conventional Commits](https://www.conventionalcommits.org/) — **lowercase after the type**. The
-**final trailer must be the task ID**; it is the anchor the spec-link gate and the PR read to connect the
-diff to its spec and story.
+This repo uses **[Conventional Commits](https://www.conventionalcommits.org/)** for both **commit
+subjects** and **PR/MR titles**. (PRs are squash-merged, so the PR/MR title *becomes* the commit
+subject — they follow one rule.)
 
 ```
-<type>: <subject — what changed, lowercase>
+<type>(<optional scope>): <description>
+```
+
+- **`<type>` is lowercase**, one of: `feat`, `fix`, `docs`, `refactor`, `test`, `perf`, `build`,
+  `ci`, `chore`, `revert`.
+- **`<description>` starts lowercase**, is written in the **imperative mood**, and has **no trailing
+  period**. (This matches the default `@commitlint/config-conventional`, which rejects a sentence-case
+  / capitalized subject.)
+- **Proper nouns, acronyms, and identifiers keep their natural case** — only the *first word* is
+  forced lowercase.
+- Use `!` after the type/scope (or a `BREAKING CHANGE:` footer) for a breaking change.
+
+```
+✅ feat: add retry to the login flow
+✅ fix: handle null user in session guard
+✅ docs: merge Phase 5 plan               # "merge" lowercase; "Phase 5" is a proper noun
+✅ fix: refresh OAuth token before expiry # acronym keeps its case
+✅ feat(sdlc-run)!: change the dial schema
+
+❌ feat: Add retry to the login flow      # capital "Add" (sentence-case)
+❌ fix: Handle null user.                  # capital + trailing period
+❌ Feat: add retry                         # capitalized type
+```
+
+> Note on the two conventions: the "capitalize the subject line" advice you may have seen is the
+> *plain-git* (Tim Pope) style for subjects **without** a type prefix. Once you adopt `feat:`/`fix:`,
+> lowercase is the matching norm — don't mix the two.
+
+### Trailers (implementation commits)
+
+Implementation commits carry a **final trailer that is the task ID** — the anchor the spec-link gate and
+the PR read to connect the diff to its spec and story:
+
+```
+<type>: <subject>
 
 <body — what and why, 1–3 lines>
 
@@ -36,22 +71,22 @@ Task: <story-id>-<task-id>
 [Contract-Change: yes]
 ```
 
-- Common `<type>`s: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`.
-- `Task: <story-id>-<task-id>` (e.g. `Task: EP-istifta-inquiries-S01-T01`) is **required** on
-  implementation commits — the spec-link check looks for it.
+- `Task: <story-id>-<task-id>` (e.g. `Task: EP-istifta-inquiries-S01-T01`) is **required** — the
+  spec-link check looks for it.
 - `Contract-Change: yes` appears **only** when the diff alters the locked contract surface (see below).
   Omit it for normal work.
 
-Example:
+### How the SDLC workflow follows this
 
-```
-feat: create inquiry endpoint
+The same rule governs the artifacts the workflow generates, so contributions and machine-assisted work
+read identically:
 
-Add POST /inquiries to the agreed contract shape, with validation and
-the in-build status default.
-
-Task: EP-istifta-inquiries-S01-T01
-```
+- **Commit subjects** written by `sdlc-implement` follow `<type>: <lowercase description>` plus the
+  `Task: <story>-<task>` trailer (see `skills/sdlc-implement/references/implement-conventions.md`).
+- **PR/MR titles** produced for a task default to that task's commit subject — one atomic task = one
+  branch = one PR/MR (see `skills/sdlc-pr-template/`).
+- The machine-readable statement of the convention lives in `skills/sdlc/config.yaml` under
+  `build.commit_subject_style` / `build.pr_title_style`.
 
 ---
 
@@ -67,20 +102,10 @@ feat/<story-id>-<task-id>-<short-slug>
 `feat/EP-istifta-inquiries-S01-T01-create-inquiry`. Never reuse a branch for a different task, and never
 fork a second branch for the same task.
 
----
-
-## PR / MR titles
-
-PR and MR titles follow the same Conventional Commits style (lowercase after the type). The
-story/task linkage travels in the **commit `Task:` trailer** and the PR template body — fill the
-template's **Story / task** and **Impact & Risk** blocks (`sdlc-pr-template` installs it). Example title:
-
-```
-feat: create inquiry endpoint
-```
-
-`high` risk (or a touched contract / auth / payments surface) routes the review to domain owners — the
-same escalation `sdlc-review-gate` applies. Run `bash checks/risk-route.sh <description>` to list them.
+When you open the PR/MR, fill the template's **Story / task** and **Impact & Risk** blocks
+(`sdlc-pr-template` installs it). `high` risk (or a touched contract / auth / payments surface) routes
+the review to domain owners — the same escalation `sdlc-review-gate` applies. Run
+`bash checks/risk-route.sh <description>` to list them.
 
 ---
 
@@ -107,3 +132,4 @@ Full detail: `skills/sdlc-implement/references/implement-conventions.md`.
   must pass).
 - Make atomic commits — one logical change per commit.
 - Open the PR/MR with the wired template; let the engineer review (a human) be the merge gate.
+- Run `bash skills/sdlc/install.sh` after any BMAD update to re-sync the installed skill copies.
