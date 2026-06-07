@@ -1,5 +1,27 @@
 # Contributing
 
+Conventions for commits, branches, PR/MR titles, and the stable IDs that tie an epic to its stories,
+tasks, and shipped code. These are what the gates and checks rely on — a diff that follows them is
+traceable back to its task, story, and contract; one that doesn't will fail a gate.
+
+New to the workflow? Start with [`TEAM-GUIDE.md`](TEAM-GUIDE.md); the full reference is
+[`README.md`](README.md).
+
+---
+
+## Stable IDs (immutable once assigned)
+
+IDs are assigned once and **never renamed** — every downstream link (branch, commit trailer, spec,
+PR, build log) is keyed on them, so renaming one breaks the chain.
+
+| Thing | Format | Example |
+|-------|--------|---------|
+| Epic | `EP-<slug>` (lowercase words + hyphens) | `EP-istifta-inquiries` |
+| Story | `EP-<slug>-S0N` (zero-padded) | `EP-istifta-inquiries-S01` |
+| Task | `EP-<slug>-S0N-T0N` (zero-padded) | `EP-istifta-inquiries-S01-T03` |
+
+---
+
 ## Commit & PR/MR title convention
 
 This repo uses **[Conventional Commits](https://www.conventionalcommits.org/)** for both **commit
@@ -35,7 +57,26 @@ subject — they follow one rule.)
 > *plain-git* (Tim Pope) style for subjects **without** a type prefix. Once you adopt `feat:`/`fix:`,
 > lowercase is the matching norm — don't mix the two.
 
-## How the SDLC workflow follows this
+### Trailers (implementation commits)
+
+Implementation commits carry a **final trailer that is the task ID** — the anchor the spec-link gate and
+the PR read to connect the diff to its spec and story:
+
+```
+<type>: <subject>
+
+<body — what and why, 1–3 lines>
+
+Task: <story-id>-<task-id>
+[Contract-Change: yes]
+```
+
+- `Task: <story-id>-<task-id>` (e.g. `Task: EP-istifta-inquiries-S01-T01`) is **required** — the
+  spec-link check looks for it.
+- `Contract-Change: yes` appears **only** when the diff alters the locked contract surface (see below).
+  Omit it for normal work.
+
+### How the SDLC workflow follows this
 
 The same rule governs the artifacts the workflow generates, so contributions and machine-assisted work
 read identically:
@@ -47,8 +88,48 @@ read identically:
 - The machine-readable statement of the convention lives in `skills/sdlc/config.yaml` under
   `build.commit_subject_style` / `build.pr_title_style`.
 
-## Branches, trailers, and gates
+---
 
-Branch names, the `Task:` / `Contract-Change:` commit trailers, the check gates, and the review rules
-are described in `README.md` and the per-step skills under `skills/`. Run `bash skills/sdlc/install.sh`
-after any BMAD update to re-sync the installed skill copies.
+## Branches
+
+One atomic task = one branch = one PR/MR. Branch off the code repo's default branch:
+
+```
+feat/<story-id>-<task-id>-<short-slug>
+```
+
+`<short-slug>` is 2–4 hyphenated words naming the change. Example:
+`feat/EP-istifta-inquiries-S01-T01-create-inquiry`. Never reuse a branch for a different task, and never
+fork a second branch for the same task.
+
+When you open the PR/MR, fill the template's **Story / task** and **Impact & Risk** blocks
+(`sdlc-pr-template` installs it). `high` risk (or a touched contract / auth / payments surface) routes
+the review to domain owners — the same escalation `sdlc-review-gate` applies. Run
+`bash checks/risk-route.sh <description>` to list them.
+
+---
+
+## The two hard rules behind the trailers
+
+**File boundary.** Each task in `tasks.md` declares a `Files:` list (≤3 where possible). The diff must
+stay inside it. If a task genuinely needs another file, **stop** — treat it as a spec bug, correct the
+task's declared files (re-run `sdlc-spec` / re-scope), then implement. A diff that quietly spreads beyond
+its declared files is the easiest way to smuggle unreviewed scope past the gates.
+
+**Contract change.** *Consuming* the locked contract (building an endpoint/event/entity to its already
+agreed shape) is normal — no trailer. *Changing* the agreed shape itself is not an implementation
+decision: stop, go back to the **architecture gate**, amend and re-lock `contract.md`, then implement
+with `Contract-Change: yes`. This keeps the contract singular and owned upstream — a code repo can never
+widen the shared surface from inside an implementation branch.
+
+Full detail: `skills/sdlc-implement/references/implement-conventions.md`.
+
+---
+
+## Before you push
+
+- Run the check gates: `sdlc-checks repo:<repo> action: run` (spec-link, contract-check, build/test/lint
+  must pass).
+- Make atomic commits — one logical change per commit.
+- Open the PR/MR with the wired template; let the engineer review (a human) be the merge gate.
+- Run `bash skills/sdlc/install.sh` after any BMAD update to re-sync the installed skill copies.
