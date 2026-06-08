@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/abdelrahmannasr/sdlc-workflow/compare/v1.0.0...v1.0.1) (2026-06-08)
+
+
+### Bug Fixes
+
+* read CLI version from package.json, not a hardcoded constant ([#26](https://github.com/abdelrahmannasr/sdlc-workflow/issues/26)) ([79a1e28](https://github.com/abdelrahmannasr/sdlc-workflow/commit/79a1e28d50d54e8b275d5f137ba456c7f4fcf76a))
+
 # 1.0.0 (2026-06-08)
 
 
