@@ -33,6 +33,17 @@ Read `epic.md` (scope, acceptance signals, `repos`), `architecture.md` (componen
 `contract.md` (the shared surface stories must honour), and `ui-design.md` (screens/flows). Stories
 must collectively satisfy the epic's acceptance signals and stay within the contract surface.
 
+### Step 2b — Load existing-code context (make the brain code-aware)
+Read the registry `{project-root}/.sdlc/repos.json` (`config.yaml` `code_context`). For **each repo in
+`epic.repos`**, load the code-map `{project-root}/.sdlc/code-context/<repo>/code-map.md` so each story's
+**"Notes for build"** can point at the **real existing modules/files** a story extends — giving the
+Phase 3 build (Spec Kit per repo) accurate anchors instead of invented ones.
+
+- **Greenfield-safe:** if `repos.json` is absent/empty, note "no repos connected" and proceed.
+- **Staleness:** if a repo's current HEAD ≠ its registry `syncedHead`, warn and suggest
+  `sdlc-connect-repos action: refresh`; stamp `code-context: stale` in the story frontmatter.
+- **Traceability:** record the loaded maps in each story's `code-context:` frontmatter field.
+
 ### Step 3 — Break down the epic (assist: pm)
 Adopt the **pm** lens (`bmad-agent-pm`, John). Decompose the epic into the smallest set of
 independently reviewable, independently buildable stories. For each story decide which repos it touches
@@ -53,6 +64,7 @@ id: EP-<slug>-S0N
 epic: EP-<slug>
 status: draft
 repos: [<subset of epic.repos this story implements>]
+code-context: { repos: [], loaded: <YYYY-MM-DD or none> }   # code-maps anchoring "Notes for build" (Step 2b)
 ---
 
 ## Story
@@ -82,3 +94,4 @@ approval here.** Front states do not auto-advance.
 ## Reference
 - Story frontmatter and body template: `references/story-schema.md`.
 - State schema and field meanings: `../sdlc-author-epic/references/state-schema.md`.
+- Connecting code repos + the code-context the brain reads: `../sdlc-connect-repos/SKILL.md`.
