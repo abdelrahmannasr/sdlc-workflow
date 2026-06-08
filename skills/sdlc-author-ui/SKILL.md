@@ -31,6 +31,18 @@ already have passed). If not, stop and point the user at `sdlc-status` / the gat
 Read `epic.md` (user-level acceptance signals, scope) and `architecture.md` (flows, components by
 repo). The UI must cover the user-facing flows the architecture defines.
 
+### Step 2b — Load existing-code context (make the brain code-aware)
+Read the registry `{project-root}/.sdlc/repos.json` (`config.yaml` `code_context`). For **each repo in
+`epic.repos`**, load the code-map `{project-root}/.sdlc/code-context/<repo>/code-map.md` so the UI
+**reuses existing components and conventions** rather than inventing parallel ones. This complements
+Impeccable's `/impeccable document` (Step 3), which reads code directly for the design system — when
+Impeccable is absent, the code-map is the brain's view of what UI/components already exist.
+
+- **Greenfield-safe:** if `repos.json` is absent/empty, note "no repos connected" and proceed.
+- **Staleness:** if a repo's current HEAD ≠ its registry `syncedHead`, warn and suggest
+  `sdlc-connect-repos action: refresh`; stamp `code-context: stale` in the frontmatter.
+- **Traceability:** record the loaded maps in the `ui-design.md` `code-context:` frontmatter field.
+
 ### Step 3 — Shape the UI (assist: ux-designer + Impeccable slash-commands)
 Adopt the **ux-designer** lens (`bmad-agent-ux-designer`, Sally). Drive Impeccable as slash-commands:
 
@@ -56,6 +68,7 @@ artifact: ui-design
 status: draft
 repos: [<inherit from epic>]
 impeccable: <used | not-installed>
+code-context: { repos: [], loaded: <YYYY-MM-DD or none> }   # code-maps that informed component reuse (Step 2b)
 ---
 
 ## Screens & states
@@ -86,3 +99,4 @@ here.** Front states do not auto-advance.
 ## Reference
 - Impeccable commands and the slash-command-vs-CLI deviation: `RESEARCH-NOTES.md` §4 + Deviation 3.
 - State schema and field meanings: `../sdlc-author-epic/references/state-schema.md`.
+- Connecting code repos + the code-context the brain reads: `../sdlc-connect-repos/SKILL.md`.

@@ -28,6 +28,21 @@ Ask the user for a one-line feature idea if not provided.
 Adopt the **analyst** lens (`bmad-agent-analyst`, Mary) to pressure-test the idea: who is the user,
 what problem, what signals success, what is out of scope. Keep it brief — this is shaping, not a PRD.
 
+### Step 2b — Load existing-code context (make the brain code-aware)
+Read the registry `{project-root}/.sdlc/repos.json` (`config.yaml` `code_context`). For **every
+connected repo** (the epic's `repos` are not chosen yet at this point), load the lightweight code-map
+`{project-root}/.sdlc/code-context/<repo>/code-map.md`. Use it so the epic's **Scope / Out of scope /
+Context** reflect what is **already built** — reference existing behaviour rather than re-proposing it,
+and let it inform which `repos` the epic should touch.
+
+- **Greenfield-safe:** if `repos.json` is absent or empty, note "no repos connected" and proceed — no
+  behaviour change for a project with no code yet.
+- **Staleness:** if a repo's current HEAD (`git -C <path> rev-parse HEAD`) ≠ its registry `syncedHead`,
+  warn and suggest `sdlc-connect-repos action: refresh`; stamp `code-context: stale` in the frontmatter.
+- **Traceability:** record which maps you loaded in the epic frontmatter `code-context:` field.
+- For depth on a specific area not in the map, do a live on-demand read (see `sdlc-connect-repos`
+  `references/code-context.md`) — do not block on it.
+
 ### Step 3 — Generate the Epic ID (engine-assigned, never by hand)
 Derive `EP-<slug>` where `slug` is **2–4 lowercase words joined by hyphens**, drawn from the idea
 (e.g. `EP-istifta-inquiries`). Lowercase except the fixed `EP` prefix. **The ID is assigned once and
@@ -45,6 +60,7 @@ status: draft
 owner:
 technical_product_owner:
 repos: [backend, mobile, dashboard]
+code-context: { repos: [], loaded: <YYYY-MM-DD or none> }   # which code-maps informed this epic (Step 2b)
 ---
 
 ## Goal
@@ -95,3 +111,4 @@ through the gate. Front states do not auto-advance.
 
 ## Reference
 - State schema and field meanings: `references/state-schema.md`.
+- Connecting code repos + the code-context the brain reads: `../sdlc-connect-repos/SKILL.md`.

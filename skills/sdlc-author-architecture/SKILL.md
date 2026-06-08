@@ -31,6 +31,22 @@ review must already have passed). If not, stop and point the user at `sdlc-statu
 Read `epic.md`. Note `repos` (the touched domains), the goal, scope, and acceptance signals. The
 architecture must serve every repo listed in `repos`.
 
+### Step 2b — Load existing-code context (make the brain code-aware)
+Read the registry `{project-root}/.sdlc/repos.json` (`config.yaml` `code_context`). For **each repo in
+`epic.repos`**, load the lightweight code-map `{project-root}/.sdlc/code-context/<repo>/code-map.md`
+**and**, because this phase locks the contract, the full pack `.../pack.md` when you need depth on the
+existing **endpoints, events, and data models**. This is the context that stops the architecture from
+re-defining or contradicting what is already built.
+
+- **Greenfield-safe:** if `repos.json` is absent/empty, note "no repos connected" and proceed — design
+  from scratch as before.
+- **Staleness:** if a repo's current HEAD ≠ its registry `syncedHead`, warn and suggest
+  `sdlc-connect-repos action: refresh`; stamp `code-context: stale` in the frontmatter.
+- **Traceability:** record the loaded maps in the `code-context:` frontmatter of both `architecture.md`
+  and `contract.md`.
+- For an area not in the code-map, do a live on-demand read (`sdlc-connect-repos`
+  `references/code-context.md`).
+
 ### Step 3 — Author the architecture (assist: architect)
 Adopt the **architect** lens (`bmad-agent-architect`, Winston) and write
 `{project-root}/epics/EP-<slug>/architecture.md` using EXACTLY this template:
@@ -41,6 +57,7 @@ id: EP-<slug>
 artifact: architecture
 status: draft
 repos: [<inherit from epic>]
+code-context: { repos: [], loaded: <YYYY-MM-DD or none> }   # code-maps cross-checked (Step 2b/4b)
 ---
 
 ## Overview
@@ -75,6 +92,7 @@ id: EP-<slug>
 artifact: contract
 status: locked
 repos: [<inherit from epic>]
+code-context: { repos: [], loaded: <YYYY-MM-DD or none> }   # not hashed — frontmatter sits outside CONTRACT-SURFACE
 ---
 
 # Contract — EP-<slug>
@@ -96,6 +114,20 @@ repos: [<inherit from epic>]
 ## Notes
 <!-- anything outside the surface: rationale, open questions (not hashed) -->
 ```
+
+### Step 4b — Cross-check the surface against existing code (BEFORE locking)
+Using the code-context loaded in Step 2b, compare the proposed `CONTRACT-SURFACE` against what the
+connected repos **already expose** (their code-maps' endpoints / events / data models):
+
+- If a proposed endpoint, event, or entity **collides with or duplicates** an existing one, do not
+  silently re-define it — either **reuse** the existing surface, or record the deliberate change in
+  `architecture.md` "Risks & decisions" (it will likely need a `Contract-Change` later).
+- If the new surface **depends on** existing behaviour, name that dependency in "Cross-repo flows" /
+  "Risks & decisions" so stories build on it rather than rebuilding it.
+- Reconcile every conflict **before** Step 5 — the hash locks whatever you settle on, so the surface
+  must already be consistent with the code when it is locked.
+
+If no repos are connected (greenfield), skip this step.
 
 ### Step 5 — Lock the contract surface (hash)
 Compute the SHA-256 of the **exact bytes between** the `CONTRACT-SURFACE:BEGIN` and
@@ -131,3 +163,4 @@ and that the next action is **review** via `sdlc-review-gate`. Note that this re
 ## Reference
 - Contract surface, altitude rule, and hashing recipe: `references/contract-format.md`.
 - State schema and field meanings: `../sdlc-author-epic/references/state-schema.md`.
+- Connecting code repos + the code-context cross-checked here: `../sdlc-connect-repos/SKILL.md`.
