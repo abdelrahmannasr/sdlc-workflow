@@ -34,7 +34,7 @@
   },
   "scripts": {
     "sdlc": "node bin/sdlc.mjs",
-    "test": "node --test cli/",
+    "test": "node --test cli/test.mjs",
     "prepublishOnly": "npm test"
   },
   "keywords": [
