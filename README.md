@@ -1,5 +1,9 @@
 # SDLC Workflow — gated, team, multi-repo SDLC on top of BMAD
 
+[![npm version](https://img.shields.io/npm/v/@abdelrahmannasr/sdlc-workflow?logo=npm)](https://www.npmjs.com/package/@abdelrahmannasr/sdlc-workflow)
+[![CI](https://github.com/abdelrahmannasr/sdlc-workflow/actions/workflows/ci.yml/badge.svg)](https://github.com/abdelrahmannasr/sdlc-workflow/actions/workflows/ci.yml)
+[![provenance](https://img.shields.io/badge/npm-provenance-blue?logo=npm)](https://docs.npmjs.com/generating-provenance-statements)
+
 A custom BMAD module that turns BMAD from a solo tool into a **team, gated, file-driven SDLC
 engine**. Every step does its work, writes its output to a file, and **waits at a gate**. Who
 advances the gate (human now; machine later) is a per-step setting. All state lives in files —
@@ -133,6 +137,11 @@ the first epic) are handed off to the Claude Code skills.
 `bash skills/sdlc/install.sh` — which the CLI's install step is a port of. The **source** stays in
 `skills/`, which a `bmad-method` update does not touch, so after any BMAD update just re-run the CLI
 (`… check --fix`) or the script.
+
+> **Releases are automated.** A `feat:`/`fix:` commit merged to `main` triggers
+> [semantic-release](https://semantic-release.gitbook.io/): it computes the version from the
+> [Conventional Commits](CONTRIBUTING.md), updates `CHANGELOG.md`, and publishes to npm with build
+> provenance (tokenless OIDC). No manual `npm publish`.
 
 ## The two dials (per step, build plan §2)
 
