@@ -67,17 +67,20 @@ source: repomix
 The code-map is deliberately small so every front phase can load it cheaply. The full `pack.md` is read
 only when a phase needs depth (the architecture phase, primarily).
 
-## Layer 3 — live on-demand
+## Layer 3 — live on-demand (a specific area, not a stale repo)
 
-When a front phase needs an area not captured in the code-map, or the repo is **stale**
-(HEAD ≠ `syncedHead`), it may re-pack a slice **live**, scoped to that area, without writing the cache:
+When a front phase needs an area not captured in the code-map, it may re-pack that **slice** live,
+scoped to the area, without writing the cache:
 
 ```
 npx repomix@latest --compress --include "<area globs>" --style markdown -o -
 ```
 
-Same CLI, invoked ad hoc. Prefer `refresh` (which updates the cache + `syncedHead`) when the whole repo
-has moved; use live reads for a one-off look at a specific area.
+This is for a one-off look at a specific area. **Staleness is a human decision, not an automatic
+side-effect:** when a repo is stale (HEAD ≠ `syncedHead`), the phase **flags it and stops** —
+"`<repo>` is stale; run `sdlc repo refresh <repo>` to re-pack the cache + `syncedHead`" — rather than
+silently re-packing the whole repo. A phase never refreshes the registry on its own; the human runs
+`sdlc repo refresh` (or `sdlc check --fix`).
 
 ## Why this stays DRY with backfill
 

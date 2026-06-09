@@ -75,8 +75,10 @@ PR/MR body's Impact & Risk block when given one; otherwise derive from `epic.rep
 - **Local-user auth only; store no tokens.** Reviewers use their own `gh`/`glab`.
 - **The bridge is an input path, never the authority.** It opens PRs and reads state; the **file ledger
   is the source of truth** and the gate predicate (in `sdlc-review-gate`) is unchanged.
-- **Never approve or merge.** Merging the review PR does not advance the step — `sdlc-review-gate
-  advance` does. Do not wire branch protection that couples the merge to the gate.
+- **The bridge never approves on a reviewer's behalf.** Reviewers approve/merge with their own auth. The
+  step advances when a human **merges** the approved, fully-resolved review PR (the merge is that human
+  act) — `sdlc gate sync` records the approvals + resolution + merged state and advances; unresolved
+  comments or a changed artifact hold it `in_review`. The mechanical sync is the `sdlc gate` CLI.
 - **Degrade gracefully.** No platform / disabled bridge / no CLI → the gate runs file-only with no error.
 
 ## Reference

@@ -131,12 +131,15 @@ If the hub has no remote (`platform: null`) or the bridge is disabled, the front
 file-only with no error — the bridge is purely additive.
 
 ## Live on-demand (the third context layer)
-The cached pack + map are the default. When a front phase needs an area not in the map, or a repo is
-stale, it may re-run Repomix **live**, scoped to that area:
+The cached pack + map are the default. When a front phase needs an **area** not in the map, it may
+re-run Repomix **live**, scoped to that area:
 ```
 npx repomix@latest --compress --include "<area globs>" --style markdown -o -
 ```
-Same CLI, invoked ad hoc — no registry write. Documented in `references/code-context.md`.
+Same CLI, invoked ad hoc — no registry write. A **stale repo** (HEAD ≠ `syncedHead`) is different: the
+phase **flags it and stops**, pointing the human at `sdlc repo refresh <repo>` (or `sdlc check --fix`) —
+it does not silently re-pack. Refreshing the cache is a human decision. Documented in
+`references/code-context.md`.
 
 ## Hard rules
 

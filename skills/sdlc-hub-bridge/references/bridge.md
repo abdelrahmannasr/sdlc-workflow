@@ -61,8 +61,20 @@ no longer matches `.sdlc/contract-lock.json`. The bridge extends this to platfor
 posts a comment on the review PR noting "contract re-locked — re-approval required". The escalation
 (`risk_tags: ["contract"]` → a domain-owner per repo) is unchanged.
 
-## CHANGES_REQUESTED
+## CHANGES_REQUESTED & unresolved threads hold the gate
 
-Recorded as a comment and surfaced as **blocking** in the comments file and the gate's report. It does
-not by itself fail the count-based predicate (approvals decide the gate), but `advance` should not be run
-while an unresolved change-request stands — the owner addresses it, the reviewer re-reviews, `sync` again.
+`CHANGES_REQUESTED` and any **unresolved review thread** are recorded as comments and surfaced as
+**blocking**. Under the PR-driven gate they actively hold the step `in_review`: the predicate does not
+pass while any thread is unresolved, even if the approval counts are met. The owner addresses the
+comments, replies, the reviewer **resolves** their thread, then `sync` runs again.
+
+## Merge advances; an artifact change revokes approvals
+
+- **Merge → advance.** When the reviewer rule is satisfied, every thread is resolved, **and the review
+  PR/MR is merged**, `sync` marks the step `done` and unblocks the next step. The merge is the human
+  approval act — there is no separate machine advance. (`sdlc gate sync` performs this deterministically.)
+- **Revoke on artifact change.** Each bridge approval is stamped with the content hash it was given
+  against (the file bytes; the locked contract surface for architecture). On re-sync, an approval whose
+  stamped hash ≠ the current hash is **dropped** — the reviewer must re-approve the changed artifact. A
+  genuinely newer review (later `submittedAt`) re-stamps against the new hash. This is "revoke only when
+  the artifact changed", not "revoke on any PR commit".
