@@ -32,6 +32,15 @@ defaults:
 review_gate:
   default_reviewers: 1          # non-owner reviewers required (in addition to 1 owner) => owner + 1 reviewer
   escalate_when: [contract, auth, payments]   # escalate to domain owners
+  # PR-driven automation (the `sdlc gate` CLI). With a hub platform, the review rides the per-step
+  # PR/MR: `sdlc gate sync` maps platform reviews/threads into the file ledger and the step
+  # AUTO-ADVANCES on merge, once (a) the reviewer rule is met, (b) every comment thread is resolved,
+  # and (c) the review PR/MR is merged. The merge is the human approval act, so front steps still never
+  # machine_advance. The file ledger stays the source of truth; no platform / no gh|glab => file-only.
+  advance_on: merge             # merge of the approved, fully-resolved review PR advances the step
+  revoke_on: artifact-change    # re-hash the artifact (contract surface for architecture); a changed
+                                # hash drops the bound approvals so reviewers re-approve. NOT per-commit.
+  block_on_unresolved_comments: true   # any unresolved thread / CHANGES_REQUESTED holds it in_review
 
 # Build half (Phase 3). Code repos are SEPARATE git repos (one .git each), not subfolders
 # of the product repo — faithful to "per-repo specs in each code repo, contract singular in the
@@ -99,6 +108,11 @@ code_context:
   tools: [repomix, impeccable]                        # front-phase toolchain, installed in the product hub
   pack_flags: "--compress --include-logs --style markdown"   # reuse backfill flags; Secretlint by default
   staleness: head-sha                                 # stale when a repo's HEAD != registry syncedHead
+  refresh: human                                      # a stale repo is a HUMAN decision: front-phase
+                                                      # skills FLAG it and stop (pointing at
+                                                      # `sdlc repo refresh <repo>`) — they never silently
+                                                      # re-pack. `sdlc repo list` shows fresh/stale;
+                                                      # `sdlc repo refresh` and `sdlc check --fix` re-pack.
   load_in_front_phases: true                          # epic, architecture, ui-design, stories read the maps
   # Auth: `sdlc-connect-repos` clones/fetches as the LOCAL user (SSH key or git credential helper),
   # works for both github and gitlab (and self-hosted), and stores NO tokens in the registry.

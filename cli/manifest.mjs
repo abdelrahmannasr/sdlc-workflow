@@ -45,6 +45,34 @@ export const PROJECT_FILES = {
   version: '.sdlc/cli-version.json',
 };
 
+// ---- `sdlc commit` conventions (mirror skills/sdlc/config.yaml `build`) ----
+// Conventional-commit types (config.yaml commit_subject_style).
+export const COMMIT_TYPES = ['feat', 'fix', 'docs', 'refactor', 'test', 'perf', 'build', 'ci', 'chore', 'revert'];
+// Per-commit AI co-author choices (config.yaml build.ai_coauthor.allowed). The human git author OWNS
+// the commit; the AI is only a Co-Authored-By trailer. `none` => human-only (trailer omitted).
+export const AI_COAUTHORS = {
+  claude: { name: 'Claude', email: 'noreply@anthropic.com' },
+  copilot: { name: 'GitHub Copilot', email: 'copilot@users.noreply.github.com' },
+  cursor: { name: 'Cursor', email: 'noreply@cursor.com' },
+  coderabbit: { name: 'CodeRabbit', email: 'noreply@coderabbit.ai' },
+  none: null,
+};
+// Atomic-commit guard: warn/refuse above this many staged files (build plan: ≤3 where possible).
+export const ATOMIC_FILE_LIMIT = 3;
+// Trailer order is fixed: Task -> Contract-Change -> Co-Authored-By (config.yaml build comment).
+export const TASK_TRAILER = 'Task';
+export const CONTRACT_CHANGE_TRAILER = 'Contract-Change';
+export const COAUTHOR_TRAILER = 'Co-Authored-By';
+
+// Per-epic ledger files under epics/<epic>/.sdlc/ (the file source of truth the gate reads/writes).
+export const epicFiles = (epicRoot) => ({
+  state: `${epicRoot}/.sdlc/state.json`,
+  approvals: `${epicRoot}/.sdlc/approvals.json`,
+  comments: `${epicRoot}/.sdlc/comments.json`,
+  hubPrs: `${epicRoot}/.sdlc/hub-prs.json`,
+  contractLock: `${epicRoot}/.sdlc/contract-lock.json`,
+});
+
 // Per-repo wiring: src is relative to PKG_ROOT, dest relative to the repo root.
 // `common` always installs; the platform key installs by detected platform.
 export const REPO_WIRING = {

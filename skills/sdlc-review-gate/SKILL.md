@@ -11,9 +11,10 @@ UI, stories) uses this exact gate. **No step advances until its review is approv
 file. The `analysis-review` and `epic`/`ui-design` reviews use the **base** rule (owner + 1 reviewer);
 escalation applies only where `risk_tags` or per-repo routing call for it.
 
-This gate is **swappable and file-driven**: it talks only through files and never auto-advances a
-front step. It works the same whether a human or (later) a service triggers it — the trigger is a
-parameter, not a hardcoded human.
+This gate is **swappable and file-driven**: it talks only through files. A front step advances only on a
+human act — recording an approval and `advance`, or (with the bridge) **merging the approved,
+fully-resolved review PR/MR**. It works the same whether a human or the `sdlc gate` CLI triggers it — the
+trigger is a parameter, not a hardcoded human.
 
 ## Conventions
 - `{project-root}` resolves from the project working directory.
@@ -130,7 +131,9 @@ via the local user's `gh`/`glab`. For each:
 key comments on the platform comment id (re-running `sync` does not duplicate). **Manual approvals (no
 `source` tag) are never touched.** For the architecture+contract step, discard bridge approvals dated
 before a new contract lock (re-lock invalidates platform approvals too). Then refresh the `approved.md`
-roster, set `hub-prs.json` `lastSyncedAt`, and **re-evaluate Step 3**. `sync` itself never advances.
+roster, set `hub-prs.json` `lastSyncedAt`, and **re-evaluate Step 3**. Under the PR-driven CLI (`sdlc
+gate sync`), `sync` advances the step when Step 3 passes on a **merged**, fully-resolved, approved PR
+(the merge is the human act); otherwise it records state and holds the step `in_review`.
 
 **`advance`** — Run the gate predicate (Step 3). Only advance if it passes.
 
@@ -158,14 +161,29 @@ If the predicate **passes**:
 - Write `state.json`. Report the advance and what the next authored artifact is (or that the epic is
   now `ready-for-build`).
 
+### PR-driven automation (the `sdlc gate` CLI)
+When the hub has a platform, the mechanical `open`/`sync`/`advance` is performed deterministically by the
+**`sdlc gate` CLI** (`sdlc gate open|sync|comments|status`), which writes the same `.sdlc/` + `reviews/`
+records this skill describes. The skill's job is then the human half: presenting the artifact, helping the
+owner address comments, and narrating the gate. The CLI is the single implementation of the gh/glab
+mechanics — do not hand-run gh/glab recipes when it is installed.
+
+Under that CLI the gate **advances on merge**: a review PR/MR whose reviewer rule is satisfied, whose
+comment threads are **all resolved**, and which has been **merged** auto-marks the step `done` and
+unblocks the next step. (Until those three hold, the step stays `in_review`.)
+
 ### Hard rules (build plan §1, §5)
-- **Front steps never auto-advance.** Even with `assistance: heavy`, a human must record approval.
-- A step `locked: true` may not be switched to `machine_advance`; refuse such a request.
+- **The merge click is the human approval act.** A front step advances only when a human merges the
+  approved, fully-resolved review PR — there is no machine-driven advance. A step `locked: true` may not
+  be switched to `machine_advance`; refuse such a request.
+- **Approvals are revoked when the reviewed artifact changes.** `sync` re-hashes the artifact (the locked
+  contract surface for architecture) and drops any approval bound to a stale hash, so a reviewer must
+  re-approve the new content. Unresolved comments / `CHANGES_REQUESTED` hold the gate `in_review`.
 - The gate talks only through `.sdlc/` and `reviews/` files — never hidden state.
-- **The platform bridge is an input path only.** `open`/`sync` use the local user's own `gh`/`glab`
-  (no stored tokens), and the **file ledger remains the source of truth** — the Step 3 predicate is
-  unchanged whether approvals arrive manually or via `sync`. Merging the review PR does **not** advance
-  the step; only `advance` does. With no hub platform / no CLI, the gate runs file-only with no error.
+- **The platform is an input path only.** `open`/`sync` use the local user's own `gh`/`glab` (no stored
+  tokens), and the **file ledger remains the source of truth** — the Step 3 predicate is unchanged
+  whether approvals arrive manually or via `sync`. With no hub platform / no CLI, the gate runs file-only
+  with no error (record approvals manually and `advance`).
 
 ## Reference
 - Gating details and worked example: `references/gating.md`.

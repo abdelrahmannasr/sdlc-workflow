@@ -128,9 +128,30 @@ with `npx` from your **product hub** repo — no clone needed.
 | `npx @abdelrahmannasr/sdlc-workflow check` | Read-only report: what is **missing** / **outdated** (drifted) / **stale** (code-context) vs the bundled manifest. |
 | `npx @abdelrahmannasr/sdlc-workflow check --fix` | Reconcile: fill what is missing **and** update what changed — touches nothing already correct. |
 | `npx @abdelrahmannasr/sdlc-workflow update` | Apply drift only (alias for `check --fix --scope=changed`). |
+| `sdlc gate open <epic> <artifact>` | Open the front-half **review PR/MR** for an artifact and mark the step `in_review`. |
+| `sdlc gate sync <epic> [artifact]` | Pull the PR/MR's reviews + comment threads into the file ledger; **auto-advance** the step when approvals are satisfied, all threads are resolved, and the PR is merged. |
+| `sdlc gate comments <epic> [artifact]` | Fetch the unresolved review comments to address (then reply on the PR; reviewers resolve their threads). |
+| `sdlc gate status <epic>` | Show each review step and its recorded approvals. |
+| `sdlc commit --type <t> -m <subject>` | Commit by the SDLC convention — Conventional subject, `Task`/`Contract-Change`/`Co-Authored-By` trailers, atomic-file guard. |
+| `sdlc open-pr [--repo <name>]` | Open a code-repo **task** PR/MR from the repo's platform template (build half). |
+| `sdlc repo list` / `sdlc repo refresh [name]` | List connected repos as **fresh / stale**, and re-pack a stale one — staleness is now an explicit human decision, never an automatic skill side-effect. |
 | `npx @abdelrahmannasr/sdlc-workflow --version` | Print the installed CLI version. |
 
-Flags: `--dir <path>` targets a project other than the cwd; `--force` re-copies even unchanged files.
+Flags: `--dir <path>` targets a project other than the cwd; `--force` re-copies unchanged files (or
+bypasses the commit atomic guard). Commit flags: `--type`, `-m/--message`, `--task`, `--ai
+<claude\|copilot\|cursor\|coderabbit\|none>`, `--contract-change`, `--dry-run`. `open-pr` flags:
+`--repo`, `--risk <low\|medium\|high>`, `--contract-change`.
+
+### The PR-driven review gate
+
+The front-half gate now rides the **PR/MR you open per step** (`sdlc gate open`). Reviewers approve and
+comment on the platform; `sdlc gate sync` maps that state into the file ledger (`approvals.json`,
+`comments.json`, `reviews/*.md`) — which stays the source of truth — and the step **auto-advances on
+merge** once three things hold: the reviewer rule is satisfied (owner + 1 reviewer, plus a domain-owner
+per touched repo on escalated steps), every comment thread is resolved, and the review PR/MR is merged.
+The merge click is the human approval act, so front steps still never `machine_advance`. Approvals are
+**revoked when the reviewed artifact actually changes** (re-hash), giving reviewers a fresh pass. With no
+hub platform / no `gh`/`glab`, the gate degrades to file-only with no error.
 
 ### What `setup` walks you through (7 steps)
 
