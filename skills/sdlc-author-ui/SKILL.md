@@ -47,7 +47,8 @@ Impeccable is absent, the code-map is the brain's view of what UI/components alr
 
 - **Greenfield-safe:** if `repos.json` is absent/empty, note "no repos connected" and proceed.
 - **Staleness:** if a repo's current HEAD ≠ its registry `syncedHead`, warn and suggest
-  `sdlc-connect-repos action: refresh`; stamp `code-context: stale` in the frontmatter.
+  `sdlc repo refresh <repo>` (a human decision — flag and stop, never auto-refresh); stamp
+  `code-context: stale` in the frontmatter.
 - **Traceability:** record the loaded maps in the `ui-design.md` `code-context:` frontmatter field.
 
 ### Step 3 — Shape the UI (assist: ux-designer + Impeccable slash-commands)

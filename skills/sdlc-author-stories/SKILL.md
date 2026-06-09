@@ -48,7 +48,8 @@ Phase 3 build (Spec Kit per repo) accurate anchors instead of invented ones.
 
 - **Greenfield-safe:** if `repos.json` is absent/empty, note "no repos connected" and proceed.
 - **Staleness:** if a repo's current HEAD ≠ its registry `syncedHead`, warn and suggest
-  `sdlc-connect-repos action: refresh`; stamp `code-context: stale` in the story frontmatter.
+  `sdlc repo refresh <repo>` (a human decision — flag and stop, never auto-refresh); stamp
+  `code-context: stale` in the story frontmatter.
 - **Traceability:** record the loaded maps in each story's `code-context:` frontmatter field.
 
 ### Step 3 — Break down the epic (assist: pm)

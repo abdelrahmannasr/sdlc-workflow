@@ -59,7 +59,8 @@ and let it inform which `repos` the epic should touch.
 - **Greenfield-safe:** if `repos.json` is absent or empty, note "no repos connected" and proceed — no
   behaviour change for a project with no code yet.
 - **Staleness:** if a repo's current HEAD (`git -C <path> rev-parse HEAD`) ≠ its registry `syncedHead`,
-  warn and suggest `sdlc-connect-repos action: refresh`; stamp `code-context: stale` in the frontmatter.
+  warn and suggest `sdlc repo refresh <repo>` (a human decision — flag and stop, never auto-refresh);
+  stamp `code-context: stale` in the frontmatter.
 - **Traceability:** record which maps you loaded in the epic frontmatter `code-context:` field.
 - For depth on a specific area not in the map, do a live on-demand read (see `sdlc-connect-repos`
   `references/code-context.md`) — do not block on it.
