@@ -266,7 +266,8 @@ directly. Each skill stops at a gate and never auto-advances unless a step has *
 
 Defaults: every step starts `human_approve`. The four **front** authoring steps (epic, architecture,
 UI, stories) and their reviews are **locked** — they may not be set to `machine_advance` in this
-version. Front states never auto-advance.
+version. A front state advances only on a **human act** — recording an approval and `advance`, or
+merging the approved, fully-resolved review PR — never on a machine.
 
 As of **Phase 4a** the `automation` dial is no longer inert: the orchestrator `sdlc-run` reads it and,
 for the safe **back** steps, advances on its own when a step is set to `machine_advance` (and has
@@ -299,8 +300,9 @@ detailed sections below expand every phase. Invoke a skill by name in your agent
    `sdlc-connect-repos action: connect repo:<repo> path:<path-or-git_url> domain_owner:<who>`. It
    registers the repo in `.sdlc/repos.json` and caches a Repomix pack + a lightweight **code-map**
    (existing endpoints/events/data-models/modules, secret-scanned). Clones/fetches as the **local user**
-   (SSH or credential helper; GitHub or GitLab; no stored tokens). Re-run for any new repo;
-   `action: refresh` when a repo's code moves; `action: list` shows freshness. Greenfield → skip it.
+   (SSH or credential helper; GitHub or GitLab; no stored tokens). Re-run for any new repo. Freshness is a
+   **human decision**: `sdlc repo list` shows fresh/stale, `sdlc repo refresh [name]` re-packs a moved repo
+   (skills flag staleness and point here — they never silently re-pack). Greenfield → skip it.
 6. **(Optional) Put the hub on a platform** so the front-half review runs through real PRs:
    `sdlc-connect-repos action: detect-hub`, then `action: roster` once per reviewer (login → SDLC
    name + role), and `sdlc-pr-template repo:hub action: wire` / `sdlc-review-comments repo:hub action:
@@ -311,8 +313,10 @@ detailed sections below expand every phase. Invoke a skill by name in your agent
 
 ### A — Front half (human-authored, once per epic)
 Each author step writes its artifact, sets itself `done`, moves `currentStep` to its review, and
-**stops at the gate**. Advance every gate with **`sdlc-review-gate`** (`open → comment → approve →
-advance`). Details: **“Run the full front half by hand”** below.
+**stops at the gate**. Run every gate with **`sdlc-review-gate`** — or, when the hub is on a platform,
+drive it deterministically with the **`sdlc gate`** CLI (`open → sync → … → merge`): the review rides
+the per-step PR/MR and the step **auto-advances on merge** once approvals are satisfied and all comment
+threads are resolved. Details: **“Run the full front half by hand”** below.
 
 6. `sdlc-author-epic` → `epic.md` (assigns `EP-<slug>`, seeds state) → review (base rule).
 7. `sdlc-author-architecture` → `architecture.md` + locked `contract.md` → review (**escalated**: contract).
@@ -326,10 +330,11 @@ build half by hand”** below.
 
 10. `sdlc-spec story:<id> repo:<repo>` → writes `specs/<story-id>/` (spec/plan/tasks + `link.md`).
 11. `sdlc-implement story:<id> repo:<repo> task:<T0N>` → one atomic task = one branch = one commit
-    (repeat per task).
+    (repeat per task). Commit by convention with **`sdlc commit --type <t> -m <subject> [--ai <tool>]`**
+    (Task/Contract-Change/Co-Authored-By trailers, atomic-file guard).
 12. `sdlc-checks repo:<repo> action: run` → spec-link, contract-check, build/test/lint must pass.
-13. Open the PR/MR (template already wired); `sdlc-pr-template repo:<repo> action: route` prints the
-    required reviewers from the Impact & Risk block.
+13. Open the PR/MR from the wired template with **`sdlc open-pr --repo <repo> [--risk <level>]`**;
+    `sdlc-pr-template repo:<repo> action: route` prints the required reviewers from the Impact & Risk block.
 14. `sdlc-ship` → `ai-review` (advisory) → `approve` (the human engineer gate) → `ship` (merge, record
     in `build-log.json`, update story status to `in-build`/`shipped`).
     - **Multi-repo:** repeat 10–14 in each repo, all from the **one** locked contract.
@@ -356,15 +361,19 @@ but you can also edit the files directly — that's the point.
 
 Each authoring step is the same shape: an author skill produces an artifact, sets its step `done`,
 moves `currentStep` to the matching review, and **stops at the gate**. Then **`sdlc-review-gate`**
-(one gate, reused for all four reviews) takes `open → comment → approve → advance`.
+(one gate, reused for all four reviews) takes `open → comment → approve → advance`. When the hub is on a
+platform, the **`sdlc gate`** CLI runs that gate over a real PR/MR — `open` raises the review PR, `sync`
+pulls approvals + comment threads into the ledger, and the step **auto-advances when the approved,
+fully-resolved PR is merged** (the merge is the human approval act).
 
 **Code-aware (when repos are connected).** If you ran `sdlc-connect-repos` in setup, each author step
 first loads the connected repos' **code-maps** (from `.sdlc/code-context/<repo>/`) so it considers what
 already exists: the epic references existing behaviour, **the architecture cross-checks the contract
 surface against existing endpoints/events/entities before hash-locking it**, the UI reuses existing
 components, and stories anchor to real modules. Each artifact stamps what it read in its `code-context:`
-frontmatter; a repo that has moved since connect triggers a staleness warning (→ `action: refresh`).
-With no repos connected the steps proceed exactly as before (greenfield-safe).
+frontmatter; a repo that has moved since connect triggers a staleness warning — the step **flags it and
+stops**, pointing you at `sdlc repo refresh <repo>` (refreshing is a human decision, never an automatic
+side-effect). With no repos connected the steps proceed exactly as before (greenfield-safe).
 
 ### Author steps
 1. **`sdlc-author-epic`** (state 1) → `epic.md`; assigns the stable `EP-<slug>` ID; seeds
@@ -379,30 +388,34 @@ With no repos connected the steps proceed exactly as before (greenfield-safe).
 ### The one gate (every review)
 
 Every review is the same loop — author writes, reviewers comment (which never advances), approvals
-accumulate, and only `advance` moves forward, and only when the rule is met:
+accumulate, and the step moves forward only when the rule is met. **File-only** ends in an explicit
+`advance`; **PR-driven** (hub on a platform) ends when the approved, fully-resolved review PR is
+**merged**:
 
 ```mermaid
 flowchart LR
-    a["author writes<br/>artifact"] --> o["open<br/>show artifact"]
+    a["author writes<br/>artifact"] --> o["open<br/>raise review PR/MR"]
     o --> c["comment<br/>reviewers leave notes"]
     c -->|owner addresses,<br/>edits in place| c
-    c --> ap["approve<br/>name + role"]
-    ap --> adv{"advance?<br/>rule met?"}
+    c --> ap["approve<br/>+ resolve threads"]
+    ap --> adv{"rule met,<br/>threads resolved,<br/>merged?"}
     adv -->|no — names who's missing| o
     adv -->|yes| nxt(["next step"])
 ```
 
-Invoke **`sdlc-review-gate`**:
-- `action: open` — present the artifact; reviewers leave comments in
-  `reviews/<artifact>--<date>--comments.md`. The owner addresses them and edits the artifact in place.
-  **Commenting never advances.**
-- `action: approve` (name + role) — appended to `.sdlc/approvals.json` and reflected in
-  `reviews/<artifact>--<date>--approved.md`.
-- `action: sync` — **(when the hub is on a platform)** pull approvals/comments from the artifact's hub
-  review PR/MR (opened by `open` via `sdlc-hub-bridge`, using your own `gh`/`glab` — no stored tokens)
-  into the same ledger. The file ledger stays the source of truth; merging the PR does not advance.
-- `action: advance` — advances **only if** the rule is satisfied; otherwise it names the missing
-  approval and stays put.
+**File-only** — invoke **`sdlc-review-gate`** with `open` (present the artifact; reviewers comment in
+`reviews/<artifact>--<date>--comments.md`), `approve` (name + role → `.sdlc/approvals.json`), and
+`advance` (moves **only if** the rule is satisfied, else it names the missing approval).
+
+**PR-driven** — when the hub is on a platform, the **`sdlc gate`** CLI runs the same gate over a PR/MR:
+- `sdlc gate open <epic> <artifact>` — raise the review PR/MR; mark the step `in_review`.
+- `sdlc gate sync <epic> [artifact]` — pull approvals + comment threads into the **same** ledger (your
+  own `gh`/`glab`, no stored tokens) and **auto-advance on merge** once the rule is met and every thread
+  is resolved. Approvals are **revoked when the reviewed artifact changes** (re-hash), so reviewers get
+  a fresh pass. Unresolved comments hold the step `in_review`.
+- `sdlc gate comments <epic>` fetches the open threads to address; `sdlc gate status <epic>` shows
+  approvals (counting only the non-stale ones). The file ledger stays the source of truth; with no
+  platform / no CLI it degrades to file-only.
 
 **The gate rule, by review:**
 - **Base** (epic, UI): `owner + 1 reviewer`.
@@ -454,8 +467,10 @@ the product repo. Code repos are **separate git repos** under `demo-repos/<repo>
    `link.md` back to the story (drives `/speckit.*` when installed, else degrades). It **quotes** the
    locked contract; it never widens it.
 2. **Implement** — `sdlc-implement` (the `dev` step): one atomic task = one branch
-   (`feat/<story>-<task>-…`) = one PR. The diff stays inside the files the task declared; the commit
-   ends with a `Task:` trailer (and `Contract-Change: yes` only if the locked surface is touched).
+   (`feat/<story>-<task>-…`) = one PR. The diff stays inside the files the task declared. Commit with
+   **`sdlc commit`** — it builds the conventional subject, derives the `Task:` trailer from the branch
+   (add `--contract-change` only if the locked surface is touched), appends an optional `--ai` co-author,
+   and refuses a non-atomic stage. Open the PR with **`sdlc open-pr --repo <repo>`** (template prefilled).
 3. **Check gates** — `sdlc-checks` wires three CI gates (GitHub + GitLab) that must pass before merge:
    **spec-link** (links a real story/spec), **contract-check** (a contract-surface change without
    `Contract-Change` + a re-locked contract FAILS, routing back to the architecture gate),

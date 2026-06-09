@@ -43,7 +43,8 @@ connected repo** (the epic's `repos` are not chosen yet), load the lightweight c
 
 - **Greenfield-safe:** if `repos.json` is absent or empty, note "no repos connected" and proceed.
 - **Staleness:** if a repo's current HEAD (`git -C <path> rev-parse HEAD`) ≠ its registry `syncedHead`,
-  warn and suggest `sdlc-connect-repos action: refresh`; stamp `code-context: stale` in the frontmatter.
+  warn and suggest `sdlc repo refresh <repo>` (a human decision — flag and stop, never auto-refresh);
+  stamp `code-context: stale` in the frontmatter.
 - **Traceability:** record which maps you loaded in the analysis frontmatter `code-context:` field.
 
 ### Step 3 — Generate the Epic ID (engine-assigned, never by hand)

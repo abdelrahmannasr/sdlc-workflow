@@ -77,6 +77,9 @@ Task: <story-id>-<task-id>
   spec-link check finds it with git's order-independent trailer parser, so it need not be the last line,
   but all trailers must sit together in the last paragraph (no blank lines between them).
 - **Trailer order:** `Task:` → `Contract-Change:` (if any) → `Co-Authored-By:` (if any), last.
+- **`sdlc commit`** builds this for you: `sdlc commit --type <t> -m "<subject>" [--ai <tool>]
+  [--contract-change]` derives the `Task:` trailer from the branch, emits the trailers in this exact
+  order, and guards against a non-atomic stage. `--dry-run` prints the message without committing.
 - `Contract-Change: yes` appears **only** when the diff alters the locked contract surface (see below).
   Omit it for normal work.
 
