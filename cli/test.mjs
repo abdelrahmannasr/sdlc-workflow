@@ -486,6 +486,42 @@ test('repo refresh rejects an unknown repo name', async () => {
 });
 
 // ---------------------------------------------------------------------------------------------
+// `sdlc setup` — registerRepo: only real git repos may enter the registry
+// ---------------------------------------------------------------------------------------------
+const { registerRepo } = await import('./setup.mjs');
+
+test('registerRepo rejects a missing path and a non-git directory — nothing written', () => {
+  const T = fs.mkdtempSync(path.join(os.tmpdir(), 'sdlc-reg-'));
+  const registry = { repos: [] };
+  assert.equal(registerRepo(T, registry, { name: 'ghost', rpath: 'nope/ghost' }), null);
+  fs.mkdirSync(path.join(T, 'plain'));
+  assert.equal(registerRepo(T, registry, { name: 'plain', rpath: 'plain' }), null);
+  assert.equal(registry.repos.length, 0);
+  assert.ok(!fs.existsSync(path.join(T, '.sdlc/repos.json')), 'no registry written for rejected repos');
+  fs.rmSync(T, { recursive: true, force: true });
+});
+
+test('registerRepo records a real repo; an unknown platform answer falls back to the detected one', () => {
+  const T = fs.mkdtempSync(path.join(os.tmpdir(), 'sdlc-reg2-'));
+  const real = path.join(T, 'real');
+  fs.mkdirSync(real);
+  git(real, 'init', '-q');
+  fs.writeFileSync(path.join(real, 'a.txt'), '1');
+  git(real, 'add', '-A');
+  git(real, '-c', 'user.email=a@b.c', '-c', 'user.name=x', 'commit', '-q', '-m', 'init');
+  const head = git(real, 'rev-parse', 'HEAD').toString().trim();
+  const registry = { repos: [] };
+  const repo = registerRepo(T, registry, { name: 'real', rpath: 'real', platform: 'bitbucket', today: '2026-06-10' });
+  assert.ok(repo);
+  assert.equal(repo.platform, 'github', 'unknown platform falls back (no remote => github)');
+  assert.equal(repo.syncedHead, head);
+  assert.equal(repo.git_url, null, 'no origin remote recorded as null, not ""');
+  const reg = JSON.parse(fs.readFileSync(path.join(T, '.sdlc/repos.json')));
+  assert.equal(reg.repos.length, 1);
+  fs.rmSync(T, { recursive: true, force: true });
+});
+
+// ---------------------------------------------------------------------------------------------
 // platform.mjs — pure mapping helpers (no network)
 // ---------------------------------------------------------------------------------------------
 const { detectPlatform, cliFor, resolveLogin, mapApprovers } = await import('./platform.mjs');
