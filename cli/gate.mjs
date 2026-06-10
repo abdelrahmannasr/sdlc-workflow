@@ -196,7 +196,11 @@ export async function gateCi(root, { branch, pr, today, push = true, reader = re
   const { hub } = loadHub(root);
   if (!hub?.platform) { warn('no hub platform configured (.sdlc/hub.json) — nothing to sync'); return { synced: 0 }; }
   const git = (...args) => run('git', args, { cwd: root });
-  const target = hub.default_branch || 'main';
+  // Push target: an explicit hub.default_branch wins; else the branch CI actually checked out (the
+  // workflow checks out the PR base / $CI_DEFAULT_BRANCH — hub.json from `sdlc setup` has no
+  // default_branch field, so the checkout is the truth); 'main' only as the last resort.
+  const head = git('rev-parse', '--abbrev-ref', 'HEAD').stdout;
+  const target = hub.default_branch || (head && head !== 'HEAD' ? head : 'main');
 
   // Build the work list: one job per (epic, artifact) — from the event branch, or a full sweep.
   const jobs = [];
@@ -249,14 +253,16 @@ export async function gateCi(root, { branch, pr, today, push = true, reader = re
     const fetched = job.branch ? git('fetch', 'origin', job.branch).ok : false;
     if (fetched) for (const p of overlay) git('checkout', 'FETCH_HEAD', '--', p);
 
-    const r = await gateSync(root, { epic: job.epic, artifact: job.artifact, today, reader });
-    synced += r.synced;
-
-    // Drop the overlay: only the ledger may reach the default branch via CI.
-    if (fetched) {
-      for (const p of overlay) {
-        git('checkout', 'HEAD', '--', p); // tracked files back to HEAD (no-op fail if not in HEAD)
-        git('clean', '-fd', '--', p);     // files new on the branch: remove
+    try {
+      const r = await gateSync(root, { epic: job.epic, artifact: job.artifact, today, reader });
+      synced += r.synced;
+    } finally {
+      // Drop the overlay — even when sync throws: only the ledger may reach the default branch via CI.
+      if (fetched) {
+        for (const p of overlay) {
+          git('checkout', 'HEAD', '--', p); // tracked files back to HEAD (no-op fail if not in HEAD)
+          git('clean', '-fd', '--', p);     // files new on the branch: remove
+        }
       }
     }
     touched.add(job.epic);
@@ -283,7 +289,7 @@ export async function gateCi(root, { branch, pr, today, push = true, reader = re
     if (git('push', 'origin', `HEAD:${target}`).ok) { ok(`pushed ledger to origin/${target}`); return { synced }; }
     if (attempt < 3) {
       info(`push rejected — rebasing onto origin/${target} and retrying (${attempt}/3)`);
-      git('pull', '--rebase', 'origin', target);
+      if (!git('pull', '--rebase', 'origin', target).ok) git('rebase', '--abort'); // never leave a wedged rebase
     }
   }
   fail(`could not push the ledger to origin/${target} — protected branch? allow the CI actor to push (see sdlc-hub-bridge references/bridge.md) or run \`sdlc gate sync\` locally`);

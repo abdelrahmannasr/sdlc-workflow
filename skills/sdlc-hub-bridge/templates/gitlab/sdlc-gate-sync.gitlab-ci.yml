@@ -36,6 +36,7 @@ sdlc-gate-sync:
     # MR-event path: fires on MR open / push to the review branch — NOT on approval (see header).
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /^review\/EP-/
     # Merge path: branch pipeline on the default branch whose merge commit names a review branch.
+    # Squash/fast-forward merges may omit the branch name — those advance on the next scheduled sweep.
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_MESSAGE =~ /review\/EP-/
     # Scheduled sweep: the only path that picks up approvals.
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SDLC_GATE_SYNC == "true"

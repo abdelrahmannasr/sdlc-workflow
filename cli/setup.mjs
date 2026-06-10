@@ -76,7 +76,8 @@ export async function runSetup(root, opts = {}) {
         roster.push({ login, name, role });
       }
     }
-    writeJSON(hubPath, { platform: platform === 'none' ? null : platform, bridge: platform !== 'none', roster });
+    const default_branch = platform === 'none' ? 'main' : await ask('Hub default branch', 'main');
+    writeJSON(hubPath, { platform: platform === 'none' ? null : platform, bridge: platform !== 'none', default_branch, roster });
     ok(`wrote ${PROJECT_FILES.hubConfig} (${roster.length} reviewer(s))`);
   }
 

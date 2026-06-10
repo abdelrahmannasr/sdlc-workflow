@@ -483,14 +483,14 @@ function scaffoldCiHub() {
   const origin = path.join(T, 'origin.git');
   fs.mkdirSync(origin);
   git(origin, 'init', '-q', '--bare');
-  git(origin, 'symbolic-ref', 'HEAD', 'refs/heads/main'); // clones check out main regardless of init.defaultBranch
+  git(origin, 'symbolic-ref', 'HEAD', 'refs/heads/trunk'); // a NON-main default proves gate ci derives the push target from the checkout
   const author = path.join(T, 'author');
   git(T, 'clone', '-q', origin, author);
   git(author, 'config', 'user.email', 'a@b.c');
   git(author, 'config', 'user.name', 'x');
   fs.mkdirSync(path.join(author, '.sdlc'), { recursive: true });
   fs.writeFileSync(path.join(author, '.sdlc/hub.json'), JSON.stringify({
-    platform: 'github', default_branch: 'main',
+    platform: 'github', // no default_branch — the `sdlc setup` hub.json shape; gate ci must derive it
     roster: [
       { login: 'al', name: 'alice', role: 'owner' },
       { login: 'bo', name: 'bob', role: 'reviewer' },
@@ -515,16 +515,16 @@ function scaffoldCiHub() {
   }));
   git(author, 'add', '-A');
   git(author, 'commit', '-q', '-m', 'seed');
-  git(author, 'branch', '-q', '-M', 'main');
-  git(author, 'push', '-q', 'origin', 'main');
+  git(author, 'branch', '-q', '-M', 'trunk');
+  git(author, 'push', '-q', 'origin', 'trunk');
   // the review branch carries the artifact change reviewers approved
   git(author, 'checkout', '-q', '-b', 'review/EP-test/architecture');
   fs.writeFileSync(path.join(ep, 'contract.md'), BRANCH_CONTRACT);
   git(author, 'add', '-A');
   git(author, 'commit', '-q', '-m', 'review: architecture (EP-test)');
   git(author, 'push', '-q', 'origin', 'review/EP-test/architecture');
-  git(author, 'checkout', '-q', 'main');
-  // the throwaway CI checkout, on main, without the artifact edit
+  git(author, 'checkout', '-q', 'trunk');
+  // the throwaway CI checkout, on the default branch, without the artifact edit
   const ci = path.join(T, 'ci');
   git(T, 'clone', '-q', origin, ci);
   git(ci, 'config', 'user.email', 'sdlc-gate-sync@noreply');
@@ -533,44 +533,44 @@ function scaffoldCiHub() {
 }
 const show = (cwd, ref) => git(cwd, 'show', ref).toString();
 
-test('gate ci: derives epic/artifact from the branch, syncs, commits ONLY the ledger to main', async () => {
+test('gate ci: derives epic/artifact from the branch, syncs, commits ONLY the ledger to the default branch', async () => {
   const { T, author, ci } = scaffoldCiHub();
   await gateCi(ci, { branch: 'review/EP-test/architecture', pr: 7, today: '2026-06-09', reader: () => fullApproval });
 
   git(author, 'fetch', '-q', 'origin');
   // step advanced + hub-prs.json upserted from the event (it was never committed by the author)
-  const state = JSON.parse(show(author, 'origin/main:epics/EP-test/.sdlc/state.json'));
+  const state = JSON.parse(show(author, 'origin/trunk:epics/EP-test/.sdlc/state.json'));
   assert.equal(state.steps.find((s) => s.id === 'architecture-review').status, 'done');
   assert.equal(state.currentStep, 'ui-design');
-  const hubPrs = JSON.parse(show(author, 'origin/main:epics/EP-test/.sdlc/hub-prs.json'));
+  const hubPrs = JSON.parse(show(author, 'origin/trunk:epics/EP-test/.sdlc/hub-prs.json'));
   assert.equal(hubPrs[0].number, 7);
   // the approval is bound to the BRANCH contract surface (the overlay), not main's stale one
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sdlc-hash-'));
   fs.writeFileSync(path.join(tmp, 'contract.md'), BRANCH_CONTRACT);
   const branchHash = contractSurfaceHash(tmp);
-  const approvals = JSON.parse(show(author, 'origin/main:epics/EP-test/.sdlc/approvals.json'));
+  const approvals = JSON.parse(show(author, 'origin/trunk:epics/EP-test/.sdlc/approvals.json'));
   assert.ok(approvals.every((a) => a.artifactHash === branchHash), 'approvals bound to the reviewed content');
   // the artifact itself never lands via CI — only via the human merge
-  assert.equal(show(author, 'origin/main:epics/EP-test/contract.md'), SEED_CONTRACT);
+  assert.equal(show(author, 'origin/trunk:epics/EP-test/contract.md'), SEED_CONTRACT);
   assert.equal(fs.readFileSync(path.join(ci, 'epics/EP-test/contract.md'), 'utf8'), SEED_CONTRACT, 'overlay dropped in the CI tree');
   // loop guard rides on the commit
-  assert.match(git(author, 'log', '-1', '--format=%B', 'origin/main').toString(), /\[skip ci\]/);
+  assert.match(git(author, 'log', '-1', '--format=%B', 'origin/trunk').toString(), /\[skip ci\]/);
   fs.rmSync(T, { recursive: true, force: true });
 });
 
 test('gate ci: a rejected push rebases and retries (competing ledger commit lands too)', async () => {
   const { T, author, ci } = scaffoldCiHub();
-  // a competing commit reaches main after the CI clone was taken
+  // a competing commit reaches the default branch after the CI clone was taken
   fs.writeFileSync(path.join(author, 'NOTES.md'), 'competing\n');
   git(author, 'add', '-A');
   git(author, 'commit', '-q', '-m', 'competing');
-  git(author, 'push', '-q', 'origin', 'main');
+  git(author, 'push', '-q', 'origin', 'trunk');
 
   await gateCi(ci, { branch: 'review/EP-test/architecture', pr: 7, today: '2026-06-09', reader: () => fullApproval });
   git(author, 'fetch', '-q', 'origin');
-  const count = Number(git(author, 'rev-list', '--count', 'origin/main').toString().trim());
-  assert.equal(count, 3, 'seed + competing + sync all on main');
-  const state = JSON.parse(show(author, 'origin/main:epics/EP-test/.sdlc/state.json'));
+  const count = Number(git(author, 'rev-list', '--count', 'origin/trunk').toString().trim());
+  assert.equal(count, 3, 'seed + competing + sync all on trunk');
+  const state = JSON.parse(show(author, 'origin/trunk:epics/EP-test/.sdlc/state.json'));
   assert.equal(state.currentStep, 'ui-design');
   fs.rmSync(T, { recursive: true, force: true });
 });
