@@ -501,6 +501,40 @@ test('registerRepo rejects a missing path and a non-git directory — nothing wr
   fs.rmSync(T, { recursive: true, force: true });
 });
 
+test('registerRepo rejects paths that resolve outside the project root', () => {
+  const T = fs.mkdtempSync(path.join(os.tmpdir(), 'sdlc-reg3-'));
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'sdlc-outside-'));
+  git(outside, 'init', '-q'); // a real git repo — still rejected, because it is outside
+  const registry = { repos: [] };
+  assert.equal(registerRepo(T, registry, { name: 'esc', rpath: '../' + path.basename(outside) }), null);
+  assert.equal(registerRepo(T, registry, { name: 'abs', rpath: outside }), null);
+  assert.equal(registry.repos.length, 0);
+  // the prefix trap: a sibling dir sharing the root's name prefix must not pass containment
+  const evil = `${T}-evil`;
+  fs.mkdirSync(evil);
+  git(evil, 'init', '-q');
+  assert.equal(registerRepo(T, registry, { name: 'evil', rpath: evil }), null);
+  fs.rmSync(T, { recursive: true, force: true });
+  fs.rmSync(outside, { recursive: true, force: true });
+  fs.rmSync(evil, { recursive: true, force: true });
+});
+
+test('gate commands reject an invalid epic id before touching the filesystem', () => {
+  const T = fs.mkdtempSync(path.join(os.tmpdir(), 'sdlc-epicid-'));
+  for (const bad of ['../../etc', 'EP-Bad_Slug!', 'EP-../escape']) {
+    let code = 0, out = '';
+    try {
+      execFileSync('node', [path.join(ROOT, 'bin/sdlc.mjs'), 'gate', 'status', bad, '--dir', T], { stdio: 'pipe' });
+    } catch (e) {
+      code = e.status;
+      out = (e.stdout || '').toString() + (e.stderr || '').toString();
+    }
+    assert.equal(code, 1, `${bad} must be rejected`);
+    assert.match(out, /invalid epic id/);
+  }
+  fs.rmSync(T, { recursive: true, force: true });
+});
+
 test('registerRepo records a real repo; an unknown platform answer falls back to the detected one', () => {
   const T = fs.mkdtempSync(path.join(os.tmpdir(), 'sdlc-reg2-'));
   const real = path.join(T, 'real');
@@ -612,6 +646,9 @@ test('parseReviewBranch accepts review/EP-*/<base> and rejects everything else',
   assert.equal(parseReviewBranch('feature/foo'), null);
   assert.equal(parseReviewBranch('review/notanepic'), null);
   assert.equal(parseReviewBranch('review/notanepic/epic'), null);
+  // the epic segment becomes a path under epics/ — only EP-[a-z0-9-]+ may pass
+  assert.equal(parseReviewBranch('review/EP-../epic'), null);
+  assert.equal(parseReviewBranch('review/EP-Bad_Slug/epic'), null);
 });
 
 test('artifactFromBase reverses artifactBase (single story maps to the stories/ set)', () => {

@@ -9,6 +9,10 @@ import { epicFiles } from './manifest.mjs';
 
 const RISK_ESCALATORS = ['contract', 'auth', 'payments'];
 
+// Epic ids are EP-<slug> with [a-z0-9-] only — anything else (uppercase, dots, slashes) is
+// rejected before it can become a path segment under epics/.
+export const isValidEpicId = (epic) => /^EP-[a-z0-9-]+$/.test(epic || '');
+
 export const epicRoot = (root, epic) => path.join(root, 'epics', epic);
 
 // epic.md -> "epic"; architecture.md -> "architecture"; stories/ -> "stories";
@@ -24,7 +28,7 @@ export function artifactBase(artifact) {
 // `review/EP-<slug>/<artifact-base>` -> { epic, base } — the branch convention `gate open` creates.
 // Null for any other branch: the guard CI uses to no-op on non-review branches.
 export function parseReviewBranch(branch = '') {
-  const m = branch.match(/^review\/(EP-[^/]+)\/(.+)$/);
+  const m = branch.match(/^review\/(EP-[a-z0-9-]+)\/(.+)$/);
   return m ? { epic: m[1], base: m[2] } : null;
 }
 

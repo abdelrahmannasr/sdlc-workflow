@@ -21,7 +21,15 @@ export const gitHead = (cwd) => run('git', ['rev-parse', 'HEAD'], { cwd }).stdou
 // A path that is not a git repository is rejected and NOTHING is written — a registry entry with
 // syncedHead:null would only surface later as an unexplained "unknown status" in the CI gates.
 export function registerRepo(root, registry, { name, rpath, platform, domain_owner = '', default_branch = 'main', today = null }) {
-  const repoRoot = path.resolve(root, rpath);
+  const projectRoot = path.resolve(root);
+  const repoRoot = path.resolve(projectRoot, rpath);
+  // Containment: every registered path must live inside the project root — the registry path is
+  // later joined and executed against (repomix cwd, CI wiring). path.sep-suffixed compare avoids
+  // the /proj vs /proj-evil prefix trap.
+  if (repoRoot !== projectRoot && !repoRoot.startsWith(projectRoot + path.sep)) {
+    warn(`${rpath} resolves outside the project root — skipped`);
+    return null;
+  }
   const head = gitHead(repoRoot);
   if (head === null) { warn(`${rpath} is not a git repository (or has no commits) — skipped`); return null; }
   const remote = run('git', ['remote', 'get-url', 'origin'], { cwd: repoRoot });
