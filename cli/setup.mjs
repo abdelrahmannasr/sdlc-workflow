@@ -77,7 +77,10 @@ export async function runSetup(root, opts = {}) {
       }
     }
     const default_branch = platform === 'none' ? 'main' : await ask('Hub default branch', 'main');
-    writeJSON(hubPath, { platform: platform === 'none' ? null : platform, bridge: platform !== 'none', default_branch, roster });
+    // `bridge_enabled` is the canonical flag (hub-config schema); keep the legacy `bridge` spelling
+    // for anything that still reads it.
+    const enabled = platform !== 'none';
+    writeJSON(hubPath, { platform: enabled ? platform : null, bridge_enabled: enabled, bridge: enabled, default_branch, roster });
     ok(`wrote ${PROJECT_FILES.hubConfig} (${roster.length} reviewer(s))`);
   }
 
@@ -114,7 +117,7 @@ export async function runSetup(root, opts = {}) {
   }
 
   // 5. Wire each connected repo + the hub itself
-  step(5, total, 'Wire connected repos (CI gates, PR template, comment scaffold)');
+  step(5, total, 'Wire connected repos + the hub (CI gates, PR template, comment scaffold, gate-sync)');
   if (registry.repos.length === 0) info('no repos to wire');
   for (const repo of registry.repos) {
     log(`  ${c.bold(repo.name)} ${c.dim(`(${repo.platform})`)}`);

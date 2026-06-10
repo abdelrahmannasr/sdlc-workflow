@@ -630,9 +630,26 @@ test('check --fix wires the hub gate-sync CI only when the bridge is enabled', a
   const again = await reconcile(T, { fix: false });
   assert.equal(again.counts.missing, 0);
   assert.equal(again.counts.outdated, 0);
-  // bridge disabled (either spelling) -> no action
+  // gitlab with the bridge -> fragment installed + idempotent
+  fs.writeFileSync(path.join(T, '.sdlc/hub.json'), JSON.stringify({ platform: 'gitlab', bridge_enabled: true, roster: [] }));
+  await reconcile(T, { fix: true });
+  assert.ok(fs.existsSync(path.join(T, '.gitlab/ci/sdlc-gate-sync.yml')), 'gitlab fragment installed');
+  const gl = await reconcile(T, { fix: false });
+  assert.equal(gl.counts.missing, 0);
+  assert.equal(gl.counts.outdated, 0);
+  // bridge disabled (either spelling) -> no action; an already-installed file is left alone
+  fs.rmSync(path.join(T, '.gitlab/ci/sdlc-gate-sync.yml'));
   fs.writeFileSync(path.join(T, '.sdlc/hub.json'), JSON.stringify({ platform: 'gitlab', bridge: false, roster: [] }));
   await reconcile(T, { fix: true });
   assert.ok(!fs.existsSync(path.join(T, '.gitlab/ci/sdlc-gate-sync.yml')), 'disabled bridge => not wired');
+  // legacy `bridge: true` (older setup) still counts as an explicit enable
+  fs.writeFileSync(path.join(T, '.sdlc/hub.json'), JSON.stringify({ platform: 'gitlab', bridge: true, roster: [] }));
+  await reconcile(T, { fix: true });
+  assert.ok(fs.existsSync(path.join(T, '.gitlab/ci/sdlc-gate-sync.yml')), 'legacy bridge:true wires');
+  // platform set but NO enable flag in either spelling -> not wired (explicit-enable semantics)
+  fs.rmSync(path.join(T, '.gitlab/ci/sdlc-gate-sync.yml'));
+  fs.writeFileSync(path.join(T, '.sdlc/hub.json'), JSON.stringify({ platform: 'gitlab', roster: [] }));
+  await reconcile(T, { fix: true });
+  assert.ok(!fs.existsSync(path.join(T, '.gitlab/ci/sdlc-gate-sync.yml')), 'missing flag => not wired');
   fs.rmSync(T, { recursive: true, force: true });
 });

@@ -51,8 +51,14 @@ sdlc-gate-sync:
     - git remote set-url origin "https://oauth2:${SDLC_GATE_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
     - export GITLAB_TOKEN="$SDLC_GATE_TOKEN" GITLAB_HOST="$CI_SERVER_URL"
     - |
+      # Merge pushes have no CI_MERGE_REQUEST_IID — derive the just-merged review branch from the
+      # merge commit message so the merge advances in event mode; the scheduled sweep stays the
+      # catch-all (squash/FF merges whose message omits the branch land there).
+      REVIEW_BRANCH="$(printf '%s' "$CI_COMMIT_MESSAGE" | grep -oE 'review/EP-[A-Za-z0-9._/-]+' | head -n1 || true)"
       if [ -n "$CI_MERGE_REQUEST_IID" ]; then
         npx -y -p @abdelrahmannasr/sdlc-workflow@1 sdlc gate ci --branch "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" --pr "$CI_MERGE_REQUEST_IID"
+      elif [ -n "$REVIEW_BRANCH" ]; then
+        npx -y -p @abdelrahmannasr/sdlc-workflow@1 sdlc gate ci --branch "$REVIEW_BRANCH"
       else
         npx -y -p @abdelrahmannasr/sdlc-workflow@1 sdlc gate ci
       fi
