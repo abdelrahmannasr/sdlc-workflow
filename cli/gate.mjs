@@ -237,7 +237,16 @@ export async function gateCi(root, { branch, pr, today, push = true, reader = re
   } else {
     const epicsDir = path.join(root, 'epics');
     for (const e of fs.existsSync(epicsDir) ? fs.readdirSync(epicsDir).sort() : []) {
-      const ledger = loadLedger(epicRoot(root, e));
+      // Sweep mode isolates per-epic failures: one corrupt ledger must not block the other epics'
+      // syncs in an unattended CI run. The run still exits non-zero so the bad file gets fixed.
+      let ledger;
+      try {
+        ledger = loadLedger(epicRoot(root, e));
+      } catch (err) {
+        warn(`${e}: ${err.message} — skipping this epic`);
+        process.exitCode = 1;
+        continue;
+      }
       if (!ledger.state) continue;
       for (const p of ledger.hubPrs || []) {
         const step = findReviewStep(ledger.state, p.artifact);
@@ -252,7 +261,16 @@ export async function gateCi(root, { branch, pr, today, push = true, reader = re
   const touched = new Set();
   for (const job of jobs) {
     const epicDir = epicRoot(root, job.epic);
-    const ledger = loadLedger(epicDir);
+    // Event mode (--branch) targets a single epic: fail loudly. Sweep mode skips the bad epic.
+    let ledger;
+    try {
+      ledger = loadLedger(epicDir);
+    } catch (err) {
+      if (branch) throw err;
+      warn(`${job.epic}: ${err.message} — skipping this epic`);
+      process.exitCode = 1;
+      continue;
+    }
     if (!ledger.state) {
       warn(`${job.epic}: no epic state on ${target} — commit epics/${job.epic}/.sdlc to ${target} first`);
       continue;
@@ -279,9 +297,15 @@ export async function gateCi(root, { branch, pr, today, push = true, reader = re
     const fetched = job.branch ? git('fetch', 'origin', job.branch).ok : false;
     if (fetched) for (const p of overlay) git('checkout', 'FETCH_HEAD', '--', p);
 
+    let failed = false;
     try {
       const r = await gateSync(root, { epic: job.epic, artifact: job.artifact, today, reader });
       synced += r.synced;
+    } catch (err) {
+      if (branch) throw err; // event mode: one epic — surface the failure
+      warn(`${job.epic}: sync failed — ${err.message} — skipping this epic`);
+      process.exitCode = 1;
+      failed = true;
     } finally {
       // Drop the overlay — even when sync throws: only the ledger may reach the default branch via CI.
       if (fetched) {
@@ -291,6 +315,7 @@ export async function gateCi(root, { branch, pr, today, push = true, reader = re
         }
       }
     }
+    if (failed) continue; // a failed epic's partial state must not be committed by this run
     touched.add(job.epic);
   }
   if (!touched.size) return { synced };

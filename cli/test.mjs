@@ -819,6 +819,30 @@ test('gate ci sweep: syncs every open review PR, one commit, holds the unapprove
   fs.rmSync(T, { recursive: true, force: true });
 });
 
+test('gate ci sweep: one corrupt epic is skipped (exit 1) while the rest still sync', async () => {
+  const { T, ep } = scaffoldEpic();
+  // a second epic with a truncated state.json — must not block EP-test's sync
+  const ep2 = path.join(T, 'epics/EP-two');
+  fs.mkdirSync(path.join(ep2, '.sdlc'), { recursive: true });
+  fs.writeFileSync(path.join(ep2, '.sdlc/state.json'), '{"currentStep": "epic-rev');
+  git(T, 'init', '-q');
+  git(T, 'config', 'user.email', 'a@b.c');
+  git(T, 'config', 'user.name', 'x');
+  git(T, 'add', '-A');
+  git(T, 'commit', '-q', '-m', 'seed');
+
+  const prev = process.exitCode;
+  await gateCi(T, { today: '2026-06-09', push: false, reader: () => fullApproval });
+  assert.equal(process.exitCode, 1, 'the corrupt epic surfaces as a failed run');
+  process.exitCode = prev;
+
+  const s1 = JSON.parse(fs.readFileSync(path.join(ep, '.sdlc/state.json')));
+  assert.equal(s1.currentStep, 'ui-design', 'the healthy epic still synced and advanced');
+  assert.equal(fs.readFileSync(path.join(ep2, '.sdlc/state.json'), 'utf8'),
+    '{"currentStep": "epic-rev', 'the corrupt file is left for recovery, never rewritten');
+  fs.rmSync(T, { recursive: true, force: true });
+});
+
 test('check --fix wires the hub gate-sync CI only when the bridge is enabled', async () => {
   const { T } = scaffold();
   // no hub.json -> no hub action
