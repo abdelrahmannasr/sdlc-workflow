@@ -17,19 +17,25 @@ export function detectPlatform(remoteUrl = '') {
 }
 export const gitHead = (cwd) => run('git', ['rev-parse', 'HEAD'], { cwd }).stdout || null;
 
+// Containment: every repo path must live inside the project root — the registry path is later
+// joined and executed against (repomix cwd, CI wiring), and even the read-only remote probe must
+// not run against an arbitrary outside path. The path.sep-suffixed compare avoids the
+// /proj vs /proj-evil prefix trap.
+export function insideRoot(root, rpath) {
+  const projectRoot = path.resolve(root);
+  const resolved = path.resolve(projectRoot, rpath);
+  return resolved === projectRoot || resolved.startsWith(projectRoot + path.sep);
+}
+
 // Validate + record one code repo into the registry (the testable half of the connect loop).
 // A path that is not a git repository is rejected and NOTHING is written — a registry entry with
 // syncedHead:null would only surface later as an unexplained "unknown status" in the CI gates.
 export function registerRepo(root, registry, { name, rpath, platform, domain_owner = '', default_branch = 'main', today = null }) {
-  const projectRoot = path.resolve(root);
-  const repoRoot = path.resolve(projectRoot, rpath);
-  // Containment: every registered path must live inside the project root — the registry path is
-  // later joined and executed against (repomix cwd, CI wiring). path.sep-suffixed compare avoids
-  // the /proj vs /proj-evil prefix trap.
-  if (repoRoot !== projectRoot && !repoRoot.startsWith(projectRoot + path.sep)) {
+  if (!insideRoot(root, rpath)) {
     warn(`${rpath} resolves outside the project root — skipped`);
     return null;
   }
+  const repoRoot = path.resolve(root, rpath);
   const head = gitHead(repoRoot);
   if (head === null) { warn(`${rpath} is not a git repository (or has no commits) — skipped`); return null; }
   const remote = run('git', ['remote', 'get-url', 'origin'], { cwd: repoRoot });
@@ -136,6 +142,7 @@ export async function runSetup(root, opts = {}) {
       if (!name) break;
       if (known.has(name)) { warn(`${name} already registered — skipping`); continue; }
       const rpath = await ask('    path (relative to project root)', `demo-repos/${name}`);
+      if (!insideRoot(root, rpath)) { warn(`${rpath} resolves outside the project root — skipped`); continue; }
       const detected = run('git', ['remote', 'get-url', 'origin'], { cwd: path.resolve(root, rpath) });
       const platform = (await ask('    platform (github/gitlab)', detectPlatform(detected.ok ? detected.stdout : '') || 'github')).toLowerCase();
       const domain_owner = await ask('    domain owner', '');
