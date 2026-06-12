@@ -1,8 +1,12 @@
-# SDLC Workflow — gated, team, multi-repo SDLC on top of BMAD
+# Yadflow — the gated, team, multi-repo SDLC on top of BMAD
 
-[![npm version](https://img.shields.io/npm/v/@abdelrahmannasr/sdlc-workflow?logo=npm)](https://www.npmjs.com/package/@abdelrahmannasr/sdlc-workflow)
+[![npm version](https://img.shields.io/npm/v/yadflow?logo=npm)](https://www.npmjs.com/package/yadflow)
 [![CI](https://github.com/abdelrahmannasr/sdlc-workflow/actions/workflows/ci.yml/badge.svg)](https://github.com/abdelrahmannasr/sdlc-workflow/actions/workflows/ci.yml)
 [![provenance](https://img.shields.io/badge/npm-provenance-blue?logo=npm)](https://docs.npmjs.com/generating-provenance-statements)
+
+**Yadflow** (*yahd-flow* — from **يد**, Arabic for "hand") is the AI-driven SDLC where a human hand
+moves every gate. *AI builds. The hand decides.* On npm as `yadflow`; the GitHub repo keeps its
+historical `sdlc-workflow` name.
 
 A custom BMAD module that turns BMAD from a solo tool into a **team, gated, file-driven SDLC
 engine**. Every step does its work, writes its output to a file, and **waits at a gate**. Who
@@ -93,7 +97,7 @@ human**. Detailed walkthroughs for each phase follow below.
 |------|-----------|
 | `RESEARCH-NOTES.md` | Verified Phase 0 facts about BMAD, Spec Kit, Repomix, Impeccable + deviations. |
 | `skills/sdlc/` | Module source of truth (`config.yaml`, `module-help.csv`, `install.sh`). Survives BMAD updates. |
-| `bin/`, `cli/` | The `sdlc` setup/update CLI (published to npm as `@abdelrahmannasr/sdlc-workflow`). |
+| `bin/`, `cli/` | The `sdlc` setup/update CLI (published to npm as `yadflow`). |
 | `skills/sdlc-author-analysis/` | Optional front state 1: pressure-test the idea with the analyst into `analysis.md` (skippable). |
 | `skills/sdlc-author-epic/` | Front state 1: author an epic with AI assist, assign its `EP-<slug>` ID, seed state. |
 | `skills/sdlc-author-architecture/` | Front state 3: author `architecture.md` + the locked `contract.md`; hash-lock the contract surface. |
@@ -119,15 +123,15 @@ human**. Detailed walkthroughs for each phase follow below.
 ## The `sdlc` CLI (install, update, reconcile)
 
 The module ships a zero-dependency CLI, published to npm as
-[`@abdelrahmannasr/sdlc-workflow`](https://www.npmjs.com/package/@abdelrahmannasr/sdlc-workflow). Run it
+[`yadflow`](https://www.npmjs.com/package/yadflow). Run it
 with `npx` from your **product hub** repo — no clone needed.
 
 | Command | What it does |
 |---------|--------------|
-| `npx @abdelrahmannasr/sdlc-workflow setup` | Guided first-run wizard (the steps below). |
-| `npx @abdelrahmannasr/sdlc-workflow check` | Read-only report: what is **missing** / **outdated** (drifted) / **stale** (code-context) vs the bundled manifest. |
-| `npx @abdelrahmannasr/sdlc-workflow check --fix` | Reconcile: fill what is missing **and** update what changed — touches nothing already correct. |
-| `npx @abdelrahmannasr/sdlc-workflow update` | Apply drift only (alias for `check --fix --scope=changed`). |
+| `npx yadflow setup` | Guided first-run wizard (the steps below). |
+| `npx yadflow check` | Read-only report: what is **missing** / **outdated** (drifted) / **stale** (code-context) vs the bundled manifest. |
+| `npx yadflow check --fix` | Reconcile: fill what is missing **and** update what changed — touches nothing already correct. |
+| `npx yadflow update` | Apply drift only (alias for `check --fix --scope=changed`). |
 | `sdlc gate open <epic> <artifact>` | Open the front-half **review PR/MR** for an artifact and mark the step `in_review`. |
 | `sdlc gate sync <epic> [artifact]` | Pull the PR/MR's reviews + comment threads into the file ledger; **auto-advance** the step when approvals are satisfied, all threads are resolved, and the PR is merged. |
 | `sdlc gate comments <epic> [artifact]` | Fetch the unresolved review comments to address (then reply on the PR; reviewers resolve their threads). |
@@ -136,7 +140,7 @@ with `npx` from your **product hub** repo — no clone needed.
 | `sdlc commit --type <t> -m <subject>` | Commit by the SDLC convention — Conventional subject, `Task`/`Contract-Change`/`Co-Authored-By` trailers, atomic-file guard. |
 | `sdlc open-pr [--repo <name>]` | Open a code-repo **task** PR/MR from the repo's platform template (build half). |
 | `sdlc repo list` / `sdlc repo refresh [name]` | List connected repos as **fresh / stale**, and re-pack a stale one — staleness is now an explicit human decision, never an automatic skill side-effect. |
-| `npx @abdelrahmannasr/sdlc-workflow --version` | Print the installed CLI version. |
+| `npx yadflow --version` | Print the installed CLI version. |
 
 Flags: `--dir <path>` targets a project other than the cwd; `--force` re-copies unchanged files (or
 bypasses the commit atomic guard). Commit flags: `--type`, `-m/--message`, `--task`, `--ai
@@ -295,7 +299,7 @@ detailed sections below expand every phase. Invoke a skill by name in your agent
 
 ### 0 — One-time setup
 
-> **Shortcut:** `npx @abdelrahmannasr/sdlc-workflow setup` walks through steps 1, 4, 5 and 6 below
+> **Shortcut:** `npx yadflow setup` walks through steps 1, 4, 5 and 6 below
 > interactively (module install, hub detect + roster, connect repos, wire each repo). Run
 > `… check --fix` any time afterwards to reconcile. The manual steps below are the long-hand
 > equivalent and still work.

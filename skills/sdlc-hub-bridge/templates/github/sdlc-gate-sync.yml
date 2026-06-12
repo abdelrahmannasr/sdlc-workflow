@@ -58,6 +58,6 @@ jobs:
         run: |
           git config user.name  "sdlc-gate-sync[bot]"
           git config user.email "sdlc-gate-sync[bot]@users.noreply.github.com"
-          npx -y -p @abdelrahmannasr/sdlc-workflow@1 sdlc gate ci \
+          npx -y -p yadflow@1 sdlc gate ci \
             --branch "${{ github.event.pull_request.head.ref }}" \
             --pr "${{ github.event.pull_request.number }}"

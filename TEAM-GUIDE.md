@@ -1,4 +1,7 @@
-# Team Guide — how to use this workflow with 1 product hub + 3 code repos
+# Yadflow Team Guide — how to use the workflow with 1 product hub + 3 code repos
+
+**Yadflow** (*yahd-flow* — from **يد**, Arabic for "hand"): the AI-driven SDLC where a human hand
+moves every gate. On npm as `yadflow`.
 
 This is the short, plain-language version of `README.md`, written for a developer team. If you only read
 one page before starting, read this one. The full reference is in `README.md`.
@@ -144,10 +147,10 @@ PR/MR template, review-comment scaffold):
 
 ```bash
 cd <product-hub-repo>
-npx @abdelrahmannasr/sdlc-workflow setup
+npx yadflow setup
 ```
 
-> Re-run `npx @abdelrahmannasr/sdlc-workflow check --fix` after any workflow update — it reports what is
+> Re-run `npx yadflow check --fix` after any workflow update — it reports what is
 > missing / drifted / stale and reconciles only what changed (it never re-asks for what you already
 > answered).
 
@@ -353,10 +356,10 @@ surfaces (`contract`, `auth`, `payments`):
 - **Global "back to manual" switch:** `sdlc-run action: kill` forces every step to human approval
   instantly; `sdlc-run action: unkill` restores it.
 - **Keep the install in sync with the CLI** (run from the product hub):
-  - `npx @abdelrahmannasr/sdlc-workflow check` — report what's missing / drifted / stale (read-only).
-  - `npx @abdelrahmannasr/sdlc-workflow check --fix` — reconcile it (re-syncs skills + repo wiring).
-  - `npx @abdelrahmannasr/sdlc-workflow update` — apply drift only.
-  - `npx @abdelrahmannasr/sdlc-workflow --version` — the installed CLI version.
+  - `npx yadflow check` — report what's missing / drifted / stale (read-only).
+  - `npx yadflow check --fix` — reconcile it (re-syncs skills + repo wiring).
+  - `npx yadflow update` — apply drift only.
+  - `npx yadflow --version` — the installed CLI version.
 
 ---
 
