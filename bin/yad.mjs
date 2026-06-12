@@ -14,9 +14,10 @@ const HELP = `${c.bold('yad')} — setup, review-gate & build helpers for the SD
 
 ${c.bold('Setup & maintenance')}
   yad setup            Guided first-run setup (install module, connect & wire repos)
-  yad check            Report what is missing / drifted / stale (read-only)
+  yad check            Report what is missing / drifted / stale / legacy (read-only)
   yad check --fix      Reconcile: fill what is missing, update what changed
-  yad update           Apply drift only (alias for: check --fix --scope=changed)
+  yad update           Apply drift only (alias for: check --fix --scope=changed);
+                       also migrates pre-2.0 sdlc-* installs to the yad-* names
 
 ${c.bold('Review gate (front half)')}
   yad gate open <epic> <artifact>      Open the review PR/MR; mark the step in_review

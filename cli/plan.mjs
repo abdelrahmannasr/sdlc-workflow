@@ -8,6 +8,7 @@ import {
 } from './lib.mjs';
 import {
   SKILLS, IDE_FOLDER_TARGETS, IDE_OPENCODE_DIR, MODULE_FILES, wiringFor, HUB_WIRING, PROJECT_FILES,
+  LEGACY_SKILLS, LEGACY_MARKER, LEGACY_REPO_FILES, LEGACY_HUB_FILES,
 } from './manifest.mjs';
 
 // status: 'ok' | 'missing' | 'outdated'
@@ -63,6 +64,83 @@ export function moduleActions(root, ideTargets = ideTargetsFor(root)) {
     ));
   }
   return actions;
+}
+
+// Migration of a pre-2.0 install (the sdlc-* -> yad-* rename). Status is 'legacy' — unlike
+// 'missing' it is applied by `yad update` (--scope=changed) too, because the skill IS
+// installed, just under its old name. apply() removes the old copy AND installs the renamed
+// one, so a single update completes the rename even when the new copy would otherwise be
+// skipped as missing-scope.
+export function legacyModuleActions(root, ideTargets = ideTargetsFor(root)) {
+  const actions = [];
+  for (const ide of ideTargets) {
+    for (const [skill, old] of Object.entries(LEGACY_SKILLS)) {
+      if (ide === '.opencode') {
+        const oldDest = path.join(root, IDE_OPENCODE_DIR, `${old}.md`);
+        if (!exists(oldDest)) continue;
+        actions.push({
+          scope: ide,
+          item: `${old}.md → ${skill}.md`,
+          status: 'legacy',
+          apply: () => {
+            fs.rmSync(oldDest, { force: true });
+            copyFile(asset('skills', skill, 'SKILL.md'), path.join(root, IDE_OPENCODE_DIR, `${skill}.md`));
+          },
+        });
+      } else {
+        const oldDest = path.join(root, ide, 'skills', old);
+        if (!exists(oldDest)) continue;
+        actions.push({
+          scope: ide,
+          item: `${old} → ${skill}`,
+          status: 'legacy',
+          apply: () => {
+            fs.rmSync(oldDest, { recursive: true, force: true });
+            copyDir(asset('skills', skill), path.join(root, ide, 'skills', skill));
+          },
+        });
+      }
+    }
+  }
+  return actions;
+}
+
+// True only for a file WE installed pre-2.0: its first line carries the old ownership marker
+// (`# sdlc-managed:` / `# sdlc-managed-include:`). A same-named user-authored file is never ours.
+function ownedByOldInstall(p) {
+  try { return fs.readFileSync(p, 'utf8').startsWith(LEGACY_MARKER); } catch { return false; }
+}
+
+// old-dest -> new-dest migrations for wired CI files: remove the marker-owned old file and
+// install its renamed replacement from the current wiring.
+function legacyFileActions(scope, baseRoot, fileMap, wiring) {
+  const actions = [];
+  for (const [oldDest, newDest] of Object.entries(fileMap || {})) {
+    const oldPath = path.join(baseRoot, oldDest);
+    if (!ownedByOldInstall(oldPath)) continue;
+    const w = wiring.find((x) => x.dest === newDest);
+    actions.push({
+      scope,
+      item: `${oldDest} → ${newDest}`,
+      status: 'legacy',
+      apply: () => {
+        fs.rmSync(oldPath, { force: true });
+        if (w) copyFile(asset(w.src), path.join(baseRoot, newDest), { exec: !!w.exec });
+      },
+    });
+  }
+  return actions;
+}
+
+export function legacyRepoActions(root, repo) {
+  return legacyFileActions(repo.name, path.resolve(root, repo.path), LEGACY_REPO_FILES[repo.platform], wiringFor(repo.platform));
+}
+
+export function legacyHubActions(root) {
+  const hub = readJSON(path.join(root, PROJECT_FILES.hubConfig));
+  if (!hub?.platform || !(hub.bridge_enabled === true || hub.bridge === true)) return [];
+  const wiring = [...HUB_WIRING.common, ...(HUB_WIRING[hub.platform] || [])];
+  return legacyFileActions('hub', root, LEGACY_HUB_FILES[hub.platform], wiring);
 }
 
 // Per-repo wiring (gate scripts, CI, PR template, comment scaffold).

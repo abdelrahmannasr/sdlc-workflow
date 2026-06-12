@@ -132,9 +132,9 @@ with `npx` from your **product hub** repo — no clone needed.
 | Command | What it does |
 |---------|--------------|
 | `npx yadflow setup` | Guided first-run wizard (the steps below). |
-| `npx yadflow check` | Read-only report: what is **missing** / **outdated** (drifted) / **stale** (code-context) vs the bundled manifest. |
+| `npx yadflow check` | Read-only report: what is **missing** / **outdated** (drifted) / **stale** (code-context) / **legacy** (pre-2.0 `sdlc-*` names) vs the bundled manifest. |
 | `npx yadflow check --fix` | Reconcile: fill what is missing **and** update what changed — touches nothing already correct. |
-| `npx yadflow update` | Apply drift only (alias for `check --fix --scope=changed`). |
+| `npx yadflow update` | Apply drift only (alias for `check --fix --scope=changed`). Also migrates a pre-2.0 install in place: `sdlc-*` skill copies and marker-owned `sdlc-*.yml` CI files are replaced by their `yad-*` names (a same-named file *you* authored is never touched). |
 | `yad gate open <epic> <artifact>` | Open the front-half **review PR/MR** for an artifact and mark the step `in_review`. |
 | `yad gate sync <epic> [artifact]` | Pull the PR/MR's reviews + comment threads into the file ledger; **auto-advance** the step when approvals are satisfied, all threads are resolved, and the PR is merged. |
 | `yad gate comments <epic> [artifact]` | Fetch the unresolved review comments to address (then reply on the PR; reviewers resolve their threads). |

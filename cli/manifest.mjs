@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 export const VERSION = version;
 
-// The 17 hand-authored sdlc-* skills (mirrors skills/sdlc/install.sh).
+// The 17 hand-authored yad-* skills (mirrors skills/sdlc/install.sh).
 export const SKILLS = [
   'yad-analysis',
   'yad-epic',
@@ -30,6 +30,47 @@ export const SKILLS = [
   'yad-review-gate',
   'yad-status',
 ];
+
+// Pre-2.0 skill names (the sdlc-* -> yad-* rename). `check`/`update` migrate any install
+// still carrying an old name: remove the old copy, install the renamed one.
+export const LEGACY_SKILLS = {
+  'yad-analysis': 'sdlc-author-analysis',
+  'yad-epic': 'sdlc-author-epic',
+  'yad-architecture': 'sdlc-author-architecture',
+  'yad-ui': 'sdlc-author-ui',
+  'yad-stories': 'sdlc-author-stories',
+  'yad-connect-repos': 'sdlc-connect-repos',
+  'yad-spec': 'sdlc-spec',
+  'yad-implement': 'sdlc-implement',
+  'yad-checks': 'sdlc-checks',
+  'yad-pr-template': 'sdlc-pr-template',
+  'yad-review-comments': 'sdlc-review-comments',
+  'yad-hub-bridge': 'sdlc-hub-bridge',
+  'yad-ship': 'sdlc-ship',
+  'yad-backfill': 'sdlc-backfill',
+  'yad-run': 'sdlc-run',
+  'yad-review-gate': 'sdlc-review-gate',
+  'yad-status': 'sdlc-status',
+};
+
+// Pre-2.0 wired-file dests replaced by renamed ones (old dest -> new dest, per platform).
+// An old file is removed ONLY when its first line carries the old ownership marker —
+// a same-named file the user authored themselves is never touched.
+export const LEGACY_MARKER = '# sdlc-managed';
+export const LEGACY_REPO_FILES = {
+  github: { '.github/workflows/sdlc-checks.yml': '.github/workflows/yad-checks.yml' },
+  gitlab: { '.gitlab/ci/sdlc-checks.yml': '.gitlab/ci/yad-checks.yml' },
+};
+export const LEGACY_HUB_FILES = {
+  github: {
+    '.github/workflows/sdlc-gate-sync.yml': '.github/workflows/yad-gate-sync.yml',
+    '.github/workflows/sdlc-verified-commits.yml': '.github/workflows/yad-verified-commits.yml',
+  },
+  gitlab: {
+    '.gitlab/ci/sdlc-gate-sync.yml': '.gitlab/ci/yad-gate-sync.yml',
+    '.gitlab/ci/sdlc-verified-commits.yml': '.gitlab/ci/yad-verified-commits.yml',
+  },
+};
 
 // IDE install targets (relative to the target project root).
 export const IDE_FOLDER_TARGETS = ['.claude', '.agents', '.zencoder']; // <ide>/skills/<skill>/ (folder copy)

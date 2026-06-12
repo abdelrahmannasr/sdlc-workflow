@@ -78,6 +78,61 @@ test('check detects exactly one missing, one outdated, one stale', async () => {
   fs.rmSync(T, { recursive: true, force: true });
 });
 
+// `yad update` (scope=changed) must migrate a pre-2.0 install — old sdlc-* skill copies and
+// marker-owned sdlc-* CI files are replaced by the yad-* names even though the new copies are
+// technically "missing" (which scope=changed otherwise skips).
+test('update migrates pre-2.0 sdlc-* skill copies and wired CI to yad-*', async () => {
+  const { T } = scaffold();
+  fs.writeFileSync(path.join(T, '.sdlc/hub.json'), JSON.stringify({ platform: 'github', bridge_enabled: true }));
+  await reconcile(T, { fix: true });
+
+  // Simulate the pre-2.0 state: skill installed under its old name, new name absent.
+  fs.rmSync(path.join(T, '.claude/skills/yad-epic'), { recursive: true });
+  fs.mkdirSync(path.join(T, '.claude/skills/sdlc-author-epic'), { recursive: true });
+  fs.writeFileSync(path.join(T, '.claude/skills/sdlc-author-epic/SKILL.md'), '---\nname: sdlc-author-epic\n---\n');
+  fs.mkdirSync(path.join(T, '.opencode/commands'), { recursive: true });
+  fs.writeFileSync(path.join(T, '.opencode/commands/sdlc-run.md'), '---\nname: sdlc-run\n---\n');
+  // Old wired CI files, first line carrying the old ownership marker.
+  fs.rmSync(path.join(T, 'demo/backend/.github/workflows/yad-checks.yml'));
+  fs.writeFileSync(path.join(T, 'demo/backend/.github/workflows/sdlc-checks.yml'), '# sdlc-managed: sdlc-checks\nname: sdlc-checks\n');
+  fs.rmSync(path.join(T, '.github/workflows/yad-gate-sync.yml'));
+  fs.writeFileSync(path.join(T, '.github/workflows/sdlc-gate-sync.yml'), '# sdlc-managed: sdlc-hub-bridge\nname: sdlc-gate-sync\n');
+
+  const r = await reconcile(T, { fix: true, scope: 'changed' });
+  assert.ok(r.applied >= 4, 'legacy migrations applied under scope=changed');
+  for (const gone of [
+    '.claude/skills/sdlc-author-epic',
+    '.opencode/commands/sdlc-run.md',
+    'demo/backend/.github/workflows/sdlc-checks.yml',
+    '.github/workflows/sdlc-gate-sync.yml',
+  ]) assert.ok(!fs.existsSync(path.join(T, gone)), `old ${gone} removed`);
+  for (const there of [
+    '.claude/skills/yad-epic/SKILL.md',
+    '.opencode/commands/yad-run.md',
+    'demo/backend/.github/workflows/yad-checks.yml',
+    '.github/workflows/yad-gate-sync.yml',
+  ]) assert.ok(fs.existsSync(path.join(T, there)), `new ${there} installed`);
+
+  const again = await reconcile(T, { fix: false });
+  assert.equal(again.counts.legacy, 0, 'migration is idempotent');
+  fs.rmSync(T, { recursive: true, force: true });
+});
+
+// A file at an old wired path that we did NOT install (no `# sdlc-managed` first line) belongs
+// to the user — migration must leave it untouched.
+test('update leaves a user-authored file at an old wired path alone', async () => {
+  const { T } = scaffold();
+  await reconcile(T, { fix: true });
+  const userFile = path.join(T, 'demo/backend/.github/workflows/sdlc-checks.yml');
+  fs.writeFileSync(userFile, 'name: my-own-workflow\non: push\n');
+
+  const r = await reconcile(T, { fix: true, scope: 'changed' });
+  assert.equal(r.counts.legacy, 0, 'unowned file is not a legacy action');
+  assert.ok(fs.existsSync(userFile), 'user file untouched');
+  assert.equal(fs.readFileSync(userFile, 'utf8'), 'name: my-own-workflow\non: push\n');
+  fs.rmSync(T, { recursive: true, force: true });
+});
+
 test('CLI --version matches manifest', () => {
   const { version } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json')));
   const out = execFileSync('node', [path.join(ROOT, 'bin/yad.mjs'), '--version']).toString().trim();
