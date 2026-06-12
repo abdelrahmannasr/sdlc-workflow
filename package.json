@@ -1,5 +1,5 @@
 {
-  "name": "@abdelrahmannasr/sdlc-workflow",
+  "name": "yadflow",
   "version": "1.0.1",
   "description": "Gated, team, multi-repo SDLC workflow: author → review → build with a PR-driven review gate and a zero-dependency CLI (setup, gate, commit, open-pr, repo). A BMAD module + 17 skills.",
   "type": "module",

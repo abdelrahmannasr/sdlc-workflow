@@ -1,8 +1,13 @@
 # Releasing
 
-The `sdlc` CLI is published to npm as **`@abdelrahmannasr/sdlc-workflow`**. Releases are **automated**
+The `sdlc` CLI is published to npm as **`yadflow`**. Releases are **automated**
 with [semantic-release](https://semantic-release.gitbook.io/): there is no manual `npm publish` in the
 steady state. This doc covers the one-time bootstrap and the ongoing flow.
+
+> **Renamed at v1.4.0.** The package was previously published as `@abdelrahmannasr/sdlc-workflow`
+> (through v1.3.2); that scoped package is **deprecated** and points here. Same CLI, same repo —
+> the GitHub repo keeps its `sdlc-workflow` name. The trusted-publisher registration is per-package,
+> so `yadflow` needed its own bootstrap (steps A–B below).
 
 ## How it works
 
@@ -45,9 +50,10 @@ git checkout feat/sdlc-cli                          # the branch that carries pa
 npm publish --access public --provenance=false      # provenance only works inside CI (OIDC)
 ```
 
-This creates `@abdelrahmannasr/sdlc-workflow@0.1.0`. semantic-release derives the next version from git
-tags (none yet → `1.0.0`), so the first automated release lands cleanly on top. *(If `--provenance=false`
-is rejected, use `NPM_CONFIG_PROVENANCE=false npm publish --access public`.)*
+This creates the package on npm. semantic-release derives the next version from git tags (the repo's
+existing `vX.Y.Z` tags carry over the version line — the first `yadflow` release continues from the last
+scoped tag, e.g. v1.3.2 → v1.4.0 on a `feat:`), so the first automated release lands cleanly on top.
+*(If `--provenance=false` is rejected, use `NPM_CONFIG_PROVENANCE=false npm publish --access public`.)*
 
 ### B. Register the trusted publisher
 
@@ -79,8 +85,8 @@ GitHub release.) The source repo must also be **public** — npm provenance is r
 ## Verify
 
 ```bash
-npx @abdelrahmannasr/sdlc-workflow@latest --version   # the new version
-npm view @abdelrahmannasr/sdlc-workflow dist-tags      # latest: <version>
+npx yadflow@latest --version   # the new version
+npm view yadflow dist-tags      # latest: <version>
 ```
 
 The npm package page shows a green **Provenance** badge linking back to the `release.yml` run.
