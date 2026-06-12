@@ -118,6 +118,29 @@ test('update migrates pre-2.0 sdlc-* skill copies and wired CI to yad-*', async 
   fs.rmSync(T, { recursive: true, force: true });
 });
 
+// GitLab fragments are referenced by path from the root .gitlab-ci.yml include (written by the
+// wire step) — migrating the fragment must rewrite that include too, or the pipeline hard-fails
+// on a `local file does not exist`. Also covers the old `# sdlc-managed-include` marker variant.
+test('gitlab migration rewrites the root .gitlab-ci.yml include to the new fragment', async () => {
+  const { T } = scaffold();
+  const repos = JSON.parse(fs.readFileSync(path.join(T, '.sdlc/repos.json'), 'utf8'));
+  repos.repos[0].platform = 'gitlab';
+  fs.writeFileSync(path.join(T, '.sdlc/repos.json'), JSON.stringify(repos));
+  await reconcile(T, { fix: true });
+
+  fs.rmSync(path.join(T, 'demo/backend/.gitlab/ci/yad-checks.yml'));
+  fs.writeFileSync(path.join(T, 'demo/backend/.gitlab/ci/sdlc-checks.yml'), '# sdlc-managed-include: sdlc-checks\nsdlc-spec-link: {}\n');
+  fs.writeFileSync(path.join(T, 'demo/backend/.gitlab-ci.yml'), "include:\n  - local: '.gitlab/ci/sdlc-checks.yml'\n");
+
+  await reconcile(T, { fix: true, scope: 'changed' });
+  assert.ok(!fs.existsSync(path.join(T, 'demo/backend/.gitlab/ci/sdlc-checks.yml')), 'old fragment removed');
+  assert.ok(fs.existsSync(path.join(T, 'demo/backend/.gitlab/ci/yad-checks.yml')), 'new fragment installed');
+  const rootCi = fs.readFileSync(path.join(T, 'demo/backend/.gitlab-ci.yml'), 'utf8');
+  assert.ok(rootCi.includes('.gitlab/ci/yad-checks.yml'), 'include rewritten to new fragment');
+  assert.ok(!rootCi.includes('.gitlab/ci/sdlc-checks.yml'), 'no dangling include to the deleted fragment');
+  fs.rmSync(T, { recursive: true, force: true });
+});
+
 // A file at an old wired path that we did NOT install (no `# sdlc-managed` first line) belongs
 // to the user — migration must leave it untouched.
 test('update leaves a user-authored file at an old wired path alone', async () => {

@@ -112,20 +112,29 @@ function ownedByOldInstall(p) {
 }
 
 // old-dest -> new-dest migrations for wired CI files: remove the marker-owned old file and
-// install its renamed replacement from the current wiring.
+// install its renamed replacement from the current wiring. GitLab fragments are referenced by
+// path from the root `.gitlab-ci.yml` (`include: - local: ...`, written by the wire step), so
+// the migration must also rewrite that include — otherwise the pipeline hard-fails on a
+// `local file does not exist` the moment the old fragment is removed.
 function legacyFileActions(scope, baseRoot, fileMap, wiring) {
   const actions = [];
   for (const [oldDest, newDest] of Object.entries(fileMap || {})) {
     const oldPath = path.join(baseRoot, oldDest);
     if (!ownedByOldInstall(oldPath)) continue;
     const w = wiring.find((x) => x.dest === newDest);
+    if (!w) continue; // never delete a working file without a replacement to install
     actions.push({
       scope,
       item: `${oldDest} → ${newDest}`,
       status: 'legacy',
       apply: () => {
         fs.rmSync(oldPath, { force: true });
-        if (w) copyFile(asset(w.src), path.join(baseRoot, newDest), { exec: !!w.exec });
+        copyFile(asset(w.src), path.join(baseRoot, newDest), { exec: !!w.exec });
+        const rootCi = path.join(baseRoot, '.gitlab-ci.yml');
+        try {
+          const txt = fs.readFileSync(rootCi, 'utf8');
+          if (txt.includes(oldDest)) fs.writeFileSync(rootCi, txt.split(oldDest).join(newDest));
+        } catch { /* no root .gitlab-ci.yml (github repo, or fragment-only gitlab) — nothing to rewrite */ }
       },
     });
   }
