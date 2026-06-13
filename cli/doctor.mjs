@@ -5,7 +5,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { c, log, ok, info, warn, fail, hand, run, has, exists, readJSON, readJSONStrict } from './lib.mjs';
-import { VERSION, PROJECT_FILES, DESIGN_TOOLS } from './manifest.mjs';
+import { VERSION, PROJECT_FILES, DESIGN_TOOLS, TESTING_TOOLS } from './manifest.mjs';
 import { loadLedger, epicRoot } from './epic-state.mjs';
 import { gitHead } from './setup.mjs';
 import { cliFor } from './platform.mjs';
@@ -88,11 +88,31 @@ export function projectChecks(checks, root) {
     }
     if (designBroken) { /* reported above */ }
     else if (typeof design !== 'object' || Array.isArray(design) || design === null) check(checks, 'design', 'project', 'fail', `${PROJECT_FILES.designConfig} has the wrong shape [YAD-STATE-002]`, 'expected a JSON object');
-    else if (![...DESIGN_TOOLS, 'none', null, undefined].includes(design.tool)) check(checks, 'design', 'project', 'fail', `${PROJECT_FILES.designConfig}: unknown design tool '${design.tool}' [YAD-CFG-002]`, `expected one of ${DESIGN_TOOLS.join(', ')}, or none`);
-    else if (!design.tool || design.tool === 'none') check(checks, 'design', 'project', 'ok', 'design: markdown-only');
+    else if (design.tool === 'none') check(checks, 'design', 'project', 'ok', 'design: markdown-only');
+    else if (!DESIGN_TOOLS.includes(design.tool)) check(checks, 'design', 'project', 'fail', `${PROJECT_FILES.designConfig}: unknown or missing design tool '${design.tool}' [YAD-CFG-002]`, `expected one of ${DESIGN_TOOLS.join(', ')}, or none`);
     else if (design.source && design.source !== 'unavailable') check(checks, 'design', 'project', 'ok', `design: ${design.tool} (${design.source})`);
     else if (design.source === 'unavailable') check(checks, 'design', 'project', 'warn', `design: ${design.tool} MCP unavailable — yad-ui runs markdown-only`, 'connect the MCP, then run `yad-connect-design` (action: refresh)');
     else check(checks, 'design', 'project', 'warn', `design: ${design.tool} recorded but the MCP is not confirmed`, 'run `yad-connect-design` in Claude Code to detect the MCP');
+  }
+
+  // testing.json: parse + shape + tool + MCP confirmation (absent is the normal artifacts-only default —
+  // pre-feature projects have none, so silence rather than warn when the file does not exist).
+  const testingPath = path.join(root, PROJECT_FILES.testingConfig);
+  if (exists(testingPath)) {
+    let testing = null, testingBroken = false;
+    try {
+      testing = readJSONStrict(testingPath, null);
+    } catch (e) {
+      testingBroken = true;
+      check(checks, 'testing', 'project', 'fail', `${PROJECT_FILES.testingConfig} does not parse [${e.code || 'YAD-STATE-001'}]`, e.hint || 'fix the JSON or restore it from git');
+    }
+    if (testingBroken) { /* reported above */ }
+    else if (typeof testing !== 'object' || Array.isArray(testing) || testing === null) check(checks, 'testing', 'project', 'fail', `${PROJECT_FILES.testingConfig} has the wrong shape [YAD-STATE-002]`, 'expected a JSON object');
+    else if (testing.tool === 'none') check(checks, 'testing', 'project', 'ok', 'testing: artifacts-only');
+    else if (!TESTING_TOOLS.includes(testing.tool)) check(checks, 'testing', 'project', 'fail', `${PROJECT_FILES.testingConfig}: unknown or missing testing tool '${testing.tool}' [YAD-CFG-003]`, `expected one of ${TESTING_TOOLS.join(', ')}, or none`);
+    else if (testing.source && testing.source !== 'unavailable') check(checks, 'testing', 'project', 'ok', `testing: ${testing.tool} (${testing.source})`);
+    else if (testing.source === 'unavailable') check(checks, 'testing', 'project', 'warn', `testing: ${testing.tool} MCP unavailable — yad-test-cases runs artifacts-only`, 'connect the MCP, then run `yad-connect-testing` (action: refresh)');
+    else check(checks, 'testing', 'project', 'warn', `testing: ${testing.tool} recorded but the MCP is not confirmed`, 'run `yad-connect-testing` in Claude Code to detect the MCP');
   }
 
   // repos.json: parse + every entry is a live git repo; staleness vs syncedHead

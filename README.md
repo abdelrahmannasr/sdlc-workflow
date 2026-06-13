@@ -49,8 +49,9 @@ human**. Detailed walkthroughs for each phase follow below.
 | `skills/yad-architecture/` | Front state 3: author `architecture.md` + the locked `contract.md`; hash-lock the contract surface. |
 | `skills/yad-ui/` | Front state 5: author `ui-design.md` + `DESIGN.md` (Impeccable slash-commands, or graceful fallback). |
 | `skills/yad-stories/` | Front state 7: break the epic into repo-tagged stories with stable `EP-<slug>-S0N` IDs. |
+| `skills/yad-test-cases/` | Front state 9: with the test architect author `test-cases.md`; implement the automation in the connected testing tool, or produce artifacts only. |
 | `skills/yad-connect-repos/` | Connect code repos to the hub (GitHub/GitLab, local-user auth); cache a Repomix pack + **code-map** per repo so the front phases are code-aware. |
-| `skills/yad-review-gate/` | The reusable **team review + approve gate** (used for all four reviews). |
+| `skills/yad-review-gate/` | The reusable **team review + approve gate** (used for all five reviews). |
 | `skills/yad-spec/` | Build Step A: run the Spec Kit ceremony once per story per repo → `specs/<story-id>/`. |
 | `skills/yad-implement/` | Build Step B: implement ONE atomic task as a small diff on its own branch. |
 | `skills/yad-checks/` | Build Step C: wire + run the CI gates (spec-link, contract-check, build/test/lint, verified-commits). |
@@ -122,18 +123,21 @@ a manual `yad gate sync` racing CI, or GitLab pipelines — two simultaneous syn
 *commits* via the rebase retry but each works from the state it read at start, so the rarer of two
 simultaneous advancements can be lost; the next event or scheduled sweep re-syncs and converges.
 
-### What `setup` walks you through (8 steps)
+### What `setup` walks you through (9 steps)
 
 1. **Preflight** — confirm the hub is a git repo (offers `git init`); check `git`/`node`/`npx`.
-2. **Install the module** — copy all 18 `yad-*` skills into the IDE skill dirs you pick
+2. **Install the module** — copy all 20 `yad-*` skills into the IDE skill dirs you pick
    (`.claude/`, `.agents/`, `.zencoder/`, `.opencode/`) and register `_bmad/sdlc/`.
 3. **Hub platform & roster** — detect GitHub/GitLab from the remote; record reviewers → `.sdlc/hub.json`.
 4. **Connect a design tool** — record the design tool (Figma / pencil / none) → `.sdlc/design.json` so
    the UI step can materialize the design; the MCP itself is confirmed later by `yad-connect-design`.
-5. **Connect code repos** — register each repo into `.sdlc/repos.json` and cache a Repomix pack.
-6. **Wire each repo** — CI gates, PR/MR template, and review-comment scaffold.
-7. **AI review** — optionally write `.coderabbit.yaml`.
-8. **Done** — stamp `.sdlc/cli-version.json` and hand off the AI-only steps (code-maps; first epic).
+5. **Connect a testing tool** — record the testing tool (Playwright / cypress / pytest / none) →
+   `.sdlc/testing.json` so the test-cases step can implement the automation; the MCP itself is confirmed
+   later by `yad-connect-testing`.
+6. **Connect code repos** — register each repo into `.sdlc/repos.json` and cache a Repomix pack.
+7. **Wire each repo** — CI gates, PR/MR template, and review-comment scaffold.
+8. **AI review** — optionally write `.coderabbit.yaml`.
+9. **Done** — stamp `.sdlc/cli-version.json` and hand off the AI-only steps (code-maps; first epic).
 
 The deterministic file work runs automatically; the AI-only steps are handed to the Claude Code skills
 with a printed next-action. Re-run `… check --fix` any time the workflow updates — it never re-asks for
@@ -170,10 +174,11 @@ with a fix-it hint per finding. Failures carry stable, greppable codes, also pri
 | `YAD-STATE-003` | a registered repo path is missing or not a git repo | fix the path in `.sdlc/repos.json` or re-connect the repo |
 | `YAD-CFG-001` | `hub.json` names an unknown platform | expected `github`, `gitlab`, or `null` — fix it or re-run `yad setup` |
 | `YAD-CFG-002` | `design.json` names an unknown design tool | expected one of `config.yaml` `design.tools` (e.g. `figma`, `pencil`), or `none` — fix it or re-run `yad setup` |
+| `YAD-CFG-003` | `testing.json` names an unknown testing tool | expected one of `config.yaml` `testing.tools` (e.g. `playwright`, `cypress`, `pytest`), or `none` — fix it or re-run `yad setup` |
 
 Filing a bug? Attach `yad doctor --json` — it contains no secrets (names, paths, and check results only).
 
-## Agent skills (all 18)
+## Agent skills (all 20)
 
 The CLI **installs and wires** the module; the skills below are the **agents you invoke by name** in your
 AI IDE (e.g. *“run `yad-epic`”*) to actually do the work. State lives in files you can also edit
@@ -191,12 +196,17 @@ directly. Each skill stops at a gate and never auto-advances unless a step has *
   Records the tool + project/file references in `.sdlc/design.json` (local-user / MCP-session auth, no
   stored tokens), detecting the design-tool MCP and degrading to markdown-only when absent. Idempotent
   and refreshable; one connection per project.
+- **`yad-connect-testing`** — Connects a testing tool (Playwright-first, pluggable) so the test-cases
+  step can implement the actual automation tests inside it, alongside the Markdown. Records the tool +
+  project/suite references in `.sdlc/testing.json` (local-user / MCP-session auth, no stored tokens),
+  detecting the testing-tool MCP and degrading to artifacts-only when absent. Idempotent and
+  refreshable; one connection per project.
 
 ### Front half — author the "thinking" (once per epic, human-gated)
 
 - **`yad-analysis`** — *Optional* front state 1. With the analyst, pressure-test a feature idea
   and write the discovery brief into `analysis.md`. Assigns the `EP-<slug>` ID and seeds `.sdlc/` state
-  (the 10-step chain that puts analysis before epic). If skipped, the epic step does this shaping inline.
+  (the 12-step chain that puts analysis before epic). If skipped, the epic step does this shaping inline.
 - **`yad-epic`** — The epic front state. Shape the idea with the analyst (or read `analysis.md`
   when it already ran), then write the epic with the pm into `epic.md`. The entry point when analysis is
   skipped: assigns the `EP-<slug>` ID and seeds `.sdlc/` state.
@@ -211,6 +221,13 @@ directly. Each skill stops at a gate and never auto-advances unless a step has *
 - **`yad-stories`** — Front state 7. With the pm, break the approved epic into user stories, each
   tagged with the repos that must implement it. Assigns zero-padded `EP-<slug>-S0N` IDs, one file per
   story under `stories/`. Reads epic + architecture + contract + UI.
+- **`yad-test-cases`** — Front state 9, a **parallel, non-blocking** track: it opens when the stories
+  gate passes (the epic is already `ready-for-build`, so the build half runs alongside it). With the
+  test architect (Murat), author `test-cases.md` covering the approved stories (risk-based P0–P3 cases +
+  story→case traceability). When a testing tool is connected (`yad-connect-testing`), also **implements
+  the automation tests** in the connected code repo(s) (generate or link), recording the case→test map in
+  `test-links.json`; degrades to artifacts-only otherwise. Reads epic + architecture + contract + UI +
+  stories.
 
 ### The review gate (cross-cutting — used by every review)
 
@@ -269,7 +286,7 @@ merging the approved, fully-resolved review PR — never on a machine.
 
 As of **Phase 4a** the `automation` dial is no longer inert: the orchestrator `yad-run` reads it and,
 for the safe **back** steps, advances on its own when a step is set to `machine_advance` (and has
-*earned* it — see "Run the back half on the dial" below). The engineer review and all four front
+*earned* it — see "Run the back half on the dial" below). The engineer review and all five front
 states stay `human_approve` forever.
 
 ## Using the workflow end to end (all the steps, in order)
@@ -320,7 +337,10 @@ threads are resolved. Details: **“Run the full front half by hand”** below.
 7. `yad-architecture` → `architecture.md` + locked `contract.md` → review (**escalated**: contract).
 8. `yad-ui` → `ui-design.md` + `DESIGN.md` → review (base rule).
 9. `yad-stories` → repo-tagged `stories/EP-<slug>-S0N.md` → review (**per-repo**).
-   → `state.json` reaches `currentStep: ready-for-build`.
+   → `state.json` reaches `currentStep: ready-for-build` — **the build half can start now.**
+10. `yad-test-cases` → `test-cases.md` (+ automation tests when a testing tool is connected) → review (base rule).
+    **Parallel, non-blocking:** opens when the stories gate passes and runs alongside the build half; its
+    review never moves `currentStep` off `ready-for-build`.
 
 ### B — Build half (per story, per repo)
 From a `ready-for-build` story, for **each** repo the story is tagged with. Details: **“Run the full
@@ -355,12 +375,13 @@ Details: **“Run the back half on the dial”** below.
 ## Run the full front half by hand
 
 The front half walks **epic → review → architecture+contract → review → UI design → review → stories
-→ review → `ready-for-build`**. It is all files under `epics/EP-<slug>/`. The skills below guide you,
-but you can also edit the files directly — that's the point.
+→ review → `ready-for-build`**, then **test cases → review** runs as a **parallel, non-blocking track**
+alongside the build half. It is all files under `epics/EP-<slug>/`. The skills below guide you, but you
+can also edit the files directly — that's the point.
 
 Each authoring step is the same shape: an author skill produces an artifact, sets its step `done`,
 moves `currentStep` to the matching review, and **stops at the gate**. Then **`yad-review-gate`**
-(one gate, reused for all four reviews) takes `open → comment → approve → advance`. When the hub is on a
+(one gate, reused for all five reviews) takes `open → comment → approve → advance`. When the hub is on a
 platform, the **`yad gate`** CLI runs that gate over a real PR/MR — `open` raises the review PR, `sync`
 pulls approvals + comment threads into the ledger, and the step **auto-advances when the approved,
 fully-resolved PR is merged** (the merge is the human approval act).
@@ -417,7 +438,7 @@ accumulate, and the step moves forward only when the rule is met. **File-only** 
   in any story's `repos`**.
 
 ### Check status anytime
-Invoke **`yad-status`** (read-only) to see the full 8-step chain, every step's dials/status, the
+Invoke **`yad-status`** (read-only) to see the full 10-step chain, every step's dials/status, the
 contract lock, story repo tags, and which approvals the active gate still needs.
 
 ## Worked example (already in this repo)
