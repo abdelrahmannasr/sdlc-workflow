@@ -14,6 +14,7 @@ import {
   artifactPaths, upsertHubPr,
 } from './epic-state.mjs';
 import { readPr, mapApprovers, createPr } from './platform.mjs';
+import { err } from './errors.mjs';
 
 // ---- tiny frontmatter reader (key: value, and `repos: [a, b]`) ----------------------------------
 function frontmatter(file) {
@@ -64,18 +65,23 @@ function warnUnlockedContract(epicDir, artifact) {
 function loadHub(root) {
   const hubFile = path.join(root, PROJECT_FILES.hubConfig);
   const regFile = path.join(root, PROJECT_FILES.reposRegistry);
+  // Distinguish an ABSENT hub.json (null default → fine, file-only gate) from one that exists but
+  // holds literal `null` (malformed — must not silently downgrade to file-only).
   const hub = readJSONStrict(hubFile, null);
+  if (hub === null && fs.existsSync(hubFile)) {
+    throw err('YAD-STATE-002', `${hubFile}: contains \`null\` — expected a config object`, 'fix the file or re-run `yad setup`');
+  }
   if (hub !== null) {
-    if (typeof hub !== 'object' || Array.isArray(hub)) throw new Error(`${hubFile}: expected a JSON object`);
+    if (typeof hub !== 'object' || Array.isArray(hub)) throw err('YAD-STATE-002', `${hubFile}: expected a JSON object`, 'fix the file or re-run `yad setup`');
     if (![null, undefined, 'github', 'gitlab'].includes(hub.platform)) {
-      throw new Error(`${hubFile}: unknown platform '${hub.platform}' — expected github, gitlab, or null`);
+      throw err('YAD-CFG-001', `${hubFile}: unknown platform '${hub.platform}'`, 'expected github, gitlab, or null — fix the file or re-run `yad setup`');
     }
     if (hub.roster !== undefined && !Array.isArray(hub.roster)) {
-      throw new Error(`${hubFile}: expected \`roster\` to be an array`);
+      throw err('YAD-STATE-002', `${hubFile}: expected \`roster\` to be an array`, 'fix the file or re-run `yad setup`');
     }
   }
   const registry = readJSONStrict(regFile, { repos: [] });
-  if (!Array.isArray(registry?.repos)) throw new Error(`${regFile}: expected a \`repos\` array`);
+  if (!Array.isArray(registry?.repos)) throw err('YAD-STATE-002', `${regFile}: expected a \`repos\` array`, 'fix the file or re-run `yad setup`');
   return { hub, repos: registry.repos };
 }
 
@@ -131,7 +137,7 @@ function writeComments(epicDir, base, today, blocking) {
 // Upsert machine-readable participation records into the comments ledger (the counterpart to the
 // markdown side file) so the ledger — not just reviews/*.md — reflects platform thread state. One
 // record per (step, commenter, round); `round` is the count of prior synced rounds for the step.
-function recordComments(comments, { artifact, stepId, today, roster, repos, blocking }) {
+function recordComments(comments, { artifact, stepId, today, roster, blocking }) {
   if (!blocking.length) return comments;
   const byName = (login) => (roster.find((r) => r.login === login)?.name) || login || 'reviewer';
   const roleOf = (login) => (roster.find((r) => r.login === login)?.role) || 'reviewer';
@@ -386,8 +392,8 @@ export async function gateStatus(root, { epic } = {}) {
   }
 }
 
-export async function gateOpen(root, { epic, artifact, today } = {}) {
-  const { hub, repos } = loadHub(root);
+export async function gateOpen(root, { epic, artifact } = {}) {
+  const { hub } = loadHub(root);
   const epicDir = epicRoot(root, epic);
   const ledger = loadLedger(epicDir);
   if (!ledger.state) { fail(`no epic state at ${epicDir}`); process.exitCode = 1; return; }
