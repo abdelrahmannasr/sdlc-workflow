@@ -960,7 +960,7 @@ test('check --fix wires the hub gate-sync CI only when the bridge is enabled', a
 // ---------------------------------------------------------------------------------------------
 // verified-commits gate — author allowlist generation + the bash gate itself
 // ---------------------------------------------------------------------------------------------
-const { verifiedAuthorEmails, authorsActions } = await import('./plan.mjs');
+const { verifiedAuthorEmails } = await import('./plan.mjs');
 
 test('verifiedAuthorEmails: roster emails + verified_authors, lower-cased, deduped, sorted', () => {
   const hub = {

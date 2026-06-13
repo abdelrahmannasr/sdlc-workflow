@@ -3,7 +3,7 @@
 // manifest: missing setup, drifted files, stale code-context.
 import path from 'node:path';
 import {
-  c, log, ok, info, warn, hand, fail, readJSON, writeJSON, exists,
+  c, log, ok, info, warn, hand, readJSON, writeJSON, exists,
 } from './lib.mjs';
 import { VERSION, PROJECT_FILES } from './manifest.mjs';
 import {

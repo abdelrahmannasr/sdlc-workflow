@@ -132,7 +132,7 @@ function writeComments(epicDir, base, today, blocking) {
 // Upsert machine-readable participation records into the comments ledger (the counterpart to the
 // markdown side file) so the ledger — not just reviews/*.md — reflects platform thread state. One
 // record per (step, commenter, round); `round` is the count of prior synced rounds for the step.
-function recordComments(comments, { artifact, stepId, today, roster, repos, blocking }) {
+function recordComments(comments, { artifact, stepId, today, roster, blocking }) {
   if (!blocking.length) return comments;
   const byName = (login) => (roster.find((r) => r.login === login)?.name) || login || 'reviewer';
   const roleOf = (login) => (roster.find((r) => r.login === login)?.role) || 'reviewer';
@@ -387,8 +387,8 @@ export async function gateStatus(root, { epic } = {}) {
   }
 }
 
-export async function gateOpen(root, { epic, artifact, today } = {}) {
-  const { hub, repos } = loadHub(root);
+export async function gateOpen(root, { epic, artifact } = {}) {
+  const { hub } = loadHub(root);
   const epicDir = epicRoot(root, epic);
   const ledger = loadLedger(epicDir);
   if (!ledger.state) { fail(`no epic state at ${epicDir}`); process.exitCode = 1; return; }

@@ -3,9 +3,9 @@ import path from 'node:path';
 import fs from 'node:fs';
 import {
   c, log, step, ok, info, warn, hand, fail, ask, askYesNo, run, has,
-  exists, asset, copyFile, readJSON, writeJSON,
+  exists, readJSON, writeJSON,
 } from './lib.mjs';
-import { VERSION, IDE_FOLDER_TARGETS, IDE_OPENCODE_DIR, PROJECT_FILES } from './manifest.mjs';
+import { VERSION, IDE_FOLDER_TARGETS, PROJECT_FILES } from './manifest.mjs';
 import { moduleActions, repoActions, hubActions, authorsActions } from './plan.mjs';
 
 const ALL_IDES = [...IDE_FOLDER_TARGETS, '.opencode'];
